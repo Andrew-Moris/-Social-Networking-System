@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار API المتابعة</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1f2e; color: white; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #5a6fd8; }
+        .result { margin: 10px 0; padding: 10px; background: #2a2f3e; border-radius: 5px; }
+        .success { border-left: 4px solid #4facfe; }
+        .error { border-left: 4px solid #fa709a; }
+    </style>
+</head>
+<body>
+    <h1>اختبار API المتابعة</h1>
+    
+    <div class="test-section">
+        <h3>اختبار متابعة المستخدم رقم 1</h3>
+        <button onclick="testFollowUser(1)">متابعة المستخدم 1</button>
+        <button onclick="testUnfollowUser(1)">إلغاء متابعة المستخدم 1</button>
+        <div id="result1" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>اختبار متابعة المستخدم رقم 2</h3>
+        <button onclick="testFollowUser(2)">متابعة المستخدم 2</button>
+        <button onclick="testUnfollowUser(2)">إلغاء متابعة المستخدم 2</button>
+        <div id="result2" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>اختبار عام</h3>
+        <button onclick="testAPI()">اختبار شامل</button>
+        <div id="generalResult" class="result"></div>
+    </div>
+
+    <script>
+        async function testFollowUser(userId) {
+            const resultDiv = document.getElementById(`result${userId}`);
+            resultDiv.innerHTML = '🔄 جارٍ الاختبار...';
+            
+            try {
+                console.log(`🚀 إرسال طلب متابعة للمستخدم ${userId}`);
+                
+                const response = await fetch('api/social.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'toggle_follow',
+                        user_id: userId
+                    })
+                });
+                
+                console.log(`📡 استجابة الخادم:`, response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const responseText = await response.text();
+                console.log(`📄 نص الاستجابة:`, responseText);
+                
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error('Invalid JSON response: ' + responseText);
+                }
+                
+                console.log(`📊 نتيجة API:`, result);
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ ${result.message}<br>
+                        المتابعون: ${result.data?.followers_count || 'غير محدد'}<br>
+                        يتابع: ${result.data?.following_count || 'غير محدد'}<br>
+                        حالة المتابعة: ${result.data?.is_following ? 'يتابع' : 'لا يتابع'}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ ${result.message || 'خطأ غير معروف'}`;
+                }
+            } catch (error) {
+                console.error(`❌ خطأ في المتابعة:`, error);
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ: ${error.message}`;
+            }
+        }
+        
+        async function testUnfollowUser(userId) {
+            await testFollowUser(userId);
+        }
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('generalResult');
+            resultDiv.innerHTML = '🔄 جارٍ الاختبار الشامل...';
+            
+            try {
+                const response = await fetch('api/social.php', {
+                    method: 'OPTIONS'
+                });
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ API متاح ويعمل بشكل صحيح';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ مشكلة في API: ${response.status}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ في الاتصال: ${error.message}`;
+            }
+        }
+        
+        window.onload = function() {
+            console.log('🎉 صفحة اختبار API جاهزة!');
+            testAPI();
+        };
+    </script>
+</body>
+</html> 

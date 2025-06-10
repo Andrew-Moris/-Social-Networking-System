@@ -1,0 +1,1623 @@
+<?php
+/**
+ * User Profile Page
+ * Displays the currently logged-in user's profile
+ */
+
+// Start the session before any output
+session_start();
+
+// Include configuration and utility functions
+require_once 'config.php'; // Contains DB config, DEFAULT_AVATAR, POSTS_PER_PAGE
+require_once 'functions.php'; // Contains findUserByUsername, getUserPosts, getFollowersCount, etc.
+
+// Check for active user session
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
+    // If not logged in, redirect to login page
+    header('Location: login.php');
+    exit;
+}
+
+// استخدام اسم المستخدم من الجلسة لعرض الملف الشخصي للمستخدم الحالي
+$session_username = $_SESSION['username'];
+$session_user_id = $_SESSION['user_id'];
+
+// تهيئة المتغيرات
+$user = null;
+$posts = [];
+$followers_count = 0;
+$following_count = 0;
+$total_posts_count = 0; // To store total number of posts for the user
+$is_following = false; // This will always be false if viewing own profile based on logic
+$is_current_user_profile = true; // Since we are always showing the logged-in user's profile
+
+try {
+    // الاتصال بقاعدة البيانات
+    $pdo = new PDO($dsn, $db_user, $db_pass, $pdo_options);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // البحث عن المستخدم المسجل دخوله
+    $user = findUserByUsername($pdo, $session_username);
+    
+    if (!$user) {
+        // هذا السيناريو يجب ألا يحدث إذا كانت الجلسة صحيحة والمستخدم موجود في قاعدة البيانات
+        // لكن كإجراء احترازي
+        log_error("User from session '{$session_username}' not found in database.");
+        // يمكنك إعادة توجيهه لصفحة الخروج أو عرض رسالة خطأ عامة
+        session_destroy();
+        header('Location: login.php'); // Or your actual login page
+        exit;
+    }
+    
+    $profile_user_id = $user['id']; // ID of the profile being viewed (which is the logged-in user)
+    
+    // جلب منشورات المستخدم (الصفحة الأولى بشكل افتراضي)
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $posts_data = getUserPostsWithCount($pdo, $profile_user_id, $page, POSTS_PER_PAGE); // Assumes this function exists and returns posts and total count
+    $posts = $posts_data['posts'];
+    $total_posts_count = $posts_data['total_count'];
+    
+    // حساب عدد المتابعين والمتابَعين
+    $followers_count = getFollowersCount($pdo, $profile_user_id);
+    $following_count = getFollowingCount($pdo, $profile_user_id);
+    
+    // بما أن هذه صفحة المستخدم الحالية، is_following ليست ذات معنى هنا
+    // وزر المتابعة/إلغاء المتابعة لن يظهر
+
+} catch (PDOException $e) {
+    log_error("Database Error on u.php: " . $e->getMessage());
+    
+    // For debugging mode only, display error details (remove in production)
+    $error_details = "<strong>Database connection error:</strong> " . $e->getMessage();
+    $error_details .= "<br><strong>DSN:</strong> " . $dsn;
+    $error_details .= "<br><strong>User:</strong> " . $db_user;
+    
+    echo "<div style='background-color: #f8d7da; color: #721c24; padding: 15px; margin: 10px; border-radius: 5px;'>";
+    echo "<h3>Debug Error</h3>";
+    echo $error_details;
+    echo "<p><strong>Note:</strong> This message should only be displayed in development environment.</p>";
+    echo "</div>";
+    
+    // Mensaje genérico para el usuario (usar solo esto en producción)
+    $error_message_for_user = "حدث خطأ أثناء تحميل الصفحة. يرجى المحاولة مرة أخرى لاحقًا.";
+    die(); // Detener la ejecución después de mostrar el error
+}
+
+$page_title = 'ملفي الشخصي | ' . htmlspecialchars($user['username']);
+
+// The rest of the file is the HTML structure from the immersive, with PHP injected.
+?>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title; ?></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap');
+        :root {
+            --bg-primary: #0A0F1E;
+            --bg-gradient-main: linear-gradient(135deg, #0F172A 0%, #0A0F1E 100%);
+            --bg-gradient-card: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(23, 31, 48, 0.7) 100%);
+            --bg-gradient-profile: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.05) 100%);
+            --bg-gradient-chat: linear-gradient(135deg, rgba(28, 38, 59, 0.8) 0%, rgba(20, 28, 46, 0.7) 100%);
+            --bg-gradient-friends: linear-gradient(135deg, rgba(23, 37, 84, 0.6) 0%, rgba(15, 23, 42, 0.7) 100%);
+            --bg-glass: rgba(23, 31, 48, 0.7);
+            --bg-glass-header: rgba(17, 24, 39, 0.85);
+            --bg-glass-chat-sidebar: rgba(28, 38, 59, 0.75);
+            --bg-glass-chat-window: rgba(20, 28, 46, 0.75);
+            --border-glass: rgba(55, 65, 81, 0.4);
+            --text-primary: #E5E7EB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --accent-primary: #3B82F6;
+            --accent-primary-hover: #2563EB;
+            --accent-secondary: #10B981; /* Green for chat/message */
+            --accent-secondary-hover: #059669;
+            --accent-tertiary: #8B5CF6; /* Purple for other actions */
+            --accent-tertiary-hover: #7C3AED;
+            --accent-primary-active-bg: rgba(59, 130, 246, 0.2);
+            --success-online: #10B981;
+            --danger-action: #EF4444;
+            --danger-action-hover: #DC2626;
+            --font-family-base: 'Cairo', 'Tajawal', sans-serif;
+            --border-radius-card: 1rem;
+            --border-radius-input: 0.625rem;
+            --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+            --shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+            --shadow-glass-inset: inset 0 1px 2px 0 rgba(255, 255, 255, 0.02);
+            --animation-speed: 0.3s;
+        }
+        body {
+            font-family: var(--font-family-base);
+            background: var(--bg-gradient-main);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Añadir un patrón de puntos sutiles sobre el fondo */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+        }
+        .glass-effect {
+            background: var(--bg-gradient-card);
+            backdrop-filter: blur(18px) saturate(180%);
+            -webkit-backdrop-filter: blur(18px) saturate(180%);
+            border: 1px solid var(--border-glass);
+            box-shadow: var(--shadow-card), var(--shadow-glass-inset);
+            border-radius: var(--border-radius-card);
+            transition: all var(--animation-speed) ease;
+        }
+        .glass-effect:hover {
+            box-shadow: var(--shadow-card-hover);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .nav-header {
+            background-color: var(--bg-glass-header);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid var(--border-glass);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transition: box-shadow 0.3s ease;
+        }
+        /* Añadir sombra más intensa al hacer scroll */
+        .nav-header.scrolled {
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+        }
+        .nav-link {
+            transition: all 0.25s ease;
+            padding: 0.85rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.6rem;
+            width: 100%;
+            font-size: 1rem;
+            letter-spacing: 0.2px;
+        }
+        .nav-link.active {
+            background-color: var(--accent-primary);
+            color: white;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+            transform: translateX(-5px);
+        }
+        .nav-link:not(.active):hover {
+            background-color: rgba(55, 65, 81, 0.7);
+            color: var(--text-primary);
+            transform: translateX(-5px);
+        }
+        .vertical-nav {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 220px;
+            height: 100vh;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-gradient-card);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--border-glass);
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        
+        /* Main container styles */
+        .main-container {
+            margin-right: 220px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        /* Chat styles */
+        .chat-container {
+            display: flex;
+            height: 80vh;
+            background: var(--bg-gradient-card);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+        
+        .chat-sidebar {
+            width: 320px;
+            border-right: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-glass);
+        }
+        
+        .chat-sidebar-header h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .new-chat-btn {
+            background: var(--accent-primary);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-search {
+            padding: 0.75rem 1rem;
+            position: relative;
+        }
+        
+        .chat-search i {
+            position: absolute;
+            left: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+        
+        .chat-search input {
+            width: 100%;
+            padding: 0.5rem 1rem 0.5rem 2.5rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-glass);
+            color: white;
+        }
+        
+        .chat-contact-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .chat-contact {
+            display: flex;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .chat-contact:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .chat-contact.active {
+            background: rgba(59, 130, 246, 0.15);
+        }
+        
+        .chat-contact-avatar {
+            position: relative;
+            margin-right: 0.75rem;
+        }
+        
+        .chat-contact-avatar img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .status-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--bg-gradient-card);
+        }
+        
+        .status-indicator.online {
+            background: #10B981;
+        }
+        
+        .status-indicator.offline {
+            background: #6B7280;
+        }
+        
+        .chat-contact-info {
+            flex: 1;
+            min-width: 0;
+            padding-right: 0.5rem;
+        }
+        
+        .chat-contact-name {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.25rem;
+        }
+        
+        .chat-contact-last-message {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .chat-contact-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        
+        .chat-contact-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .chat-contact-unread {
+            background: var(--accent-primary);
+            color: white;
+            font-size: 0.75rem;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 0.25rem;
+        }
+        
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(17, 24, 39, 0.7);
+        }
+        
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border-glass);
+        }
+        
+        .chat-header-user {
+            display: flex;
+            align-items: center;
+        }
+        
+        .chat-header-user img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+        }
+        
+        .chat-header-name {
+            font-weight: 600;
+            color: white;
+        }
+        
+        .chat-header-status {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .chat-header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .chat-header-actions button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        
+        .chat-header-actions button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message-date {
+            align-self: center;
+            margin: 1rem 0;
+            padding: 0.25rem 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .message {
+            display: flex;
+            margin-bottom: 1rem;
+            max-width: 70%;
+        }
+        
+        .message.received {
+            align-self: flex-start;
+        }
+        
+        .message.sent {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            margin-right: 0.5rem;
+        }
+        
+        .message-avatar img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        
+        .message-content {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        
+        .message.received .message-bubble {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.sent .message-bubble {
+            background: var(--accent-primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            align-self: flex-end;
+        }
+        
+        .chat-input {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-glass);
+        }
+        
+        .chat-input-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-right: 0.75rem;
+        }
+        
+        .chat-input-actions button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: background-color 0.2s;
+        }
+        
+        .chat-input-actions button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-glass);
+            color: white;
+        }
+        
+        .chat-send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-left: 0.75rem;
+            transition: background-color 0.2s;
+        }
+        
+        .chat-send-btn:hover {
+            background: #2563EB;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 991px) {
+            .main-container {
+                margin-right: 0;
+                padding: 1rem;
+                margin-top: 60px;
+            }
+            
+            .vertical-nav {
+                width: 100%;
+                height: 60px;
+                flex-direction: row;
+                padding: 0 1rem;
+                justify-content: space-around;
+                align-items: center;
+            }
+            
+            .site-logo {
+                display: none;
+            }
+            
+            .nav-link {
+                margin-bottom: 0;
+                padding: 0.5rem;
+                border-radius: 50%;
+                width: auto;
+            }
+            
+            .nav-link span {
+                display: none;
+            }
+            
+            .nav-link i {
+                margin: 0;
+                font-size: 1.25rem;
+            }
+            
+            .mt-auto {
+                margin-top: 0 !important;
+            }
+            
+            .chat-container {
+                flex-direction: column;
+                height: calc(100vh - 80px);
+            }
+            
+            .chat-sidebar {
+                width: 100%;
+                max-height: 30vh;
+            }
+        }
+        /* Mejoras en las transiciones entre secciones */
+        .content-section { 
+            display: none; 
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--animation-speed) ease, transform var(--animation-speed) ease;
+        }
+        .content-section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeInStagger 0.7s ease-out;
+        }
+        @keyframes fadeInStagger {
+            from { opacity: 0; transform: translateY(25px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        /* Mejora en la animación para elementos dentro de cada sección */
+        .content-section.active .card-base,
+        .content-section.active .profile-card-bg,
+        .content-section.active .friend-card {
+            animation: slideUpFade 0.5s ease-out forwards;
+            animation-delay: calc(var(--animation-delay, 0) * 0.1s);
+            opacity: 0;
+        }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card-base {
+            border-radius: var(--border-radius-card);
+            padding:clamp(1.25rem, 5vw, 2rem);
+            margin-bottom: 2rem;
+        }
+        /* Mejoras en los botones de acción */
+        .action-button {
+            transition: all var(--animation-speed) ease;
+            padding: 0.7rem;
+            border-radius: 50%;
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+            z-index: -1;
+        }
+        .action-button:hover {
+            color: var(--text-primary);
+            transform: scale(1.15);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .action-button:hover::before {
+            width: 150%;
+            height: 150%;
+        }
+        .action-button:active {
+            transform: scale(0.95);
+        }
+        /* Mejoras en botones de like/dislike */
+        .like-button, .dislike-button {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .like-button.liked, .dislike-button.disliked {
+            transform: scale(1.25); 
+        }
+        .like-button.liked i, .like-button.liked span { 
+            color: var(--accent-primary);
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+        .dislike-button.disliked i, .dislike-button.disliked span { 
+            color: var(--danger-action);
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+        /* Animación al dar like */
+        @keyframes heartBeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.3); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.3); }
+            70% { transform: scale(1); }
+        }
+        .like-button.animate-like {
+            animation: heartBeat 1s;
+        }
+
+        .profile-cover {
+            height: 350px;
+            background-size: cover;
+            background-position: center;
+            border-radius: var(--border-radius-card) var(--border-radius-card) 0 0;
+            background-image: url('<?php echo !empty($user['cover_url']) ? htmlspecialchars($user['cover_url']) : "https://source.unsplash.com/random/1600x600/?abstract,neon,glow"; ?>');
+        }
+        .profile-avatar {
+            width: 170px; height: 170px;
+            border-radius: 50%;
+            border: 8px solid var(--bg-primary);
+            margin-top: -85px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.5);
+        }
+        textarea, input[type="text"], input[type="search"] {
+            background-color: rgba(17, 24, 39, 0.75);
+            border: 1px solid var(--border-glass);
+            color: var(--text-primary);
+            border-radius: var(--border-radius-input);
+            padding: 0.9rem 1.2rem;
+            transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: var(--shadow-glass-inset);
+        }
+        textarea:focus, input[type="text"]:focus, input[type="search"]:focus {
+            background-color: rgba(17, 24, 39, 0.95);
+            border-color: var(--accent-primary);
+            outline: none;
+            box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.3), var(--shadow-glass-inset);
+        }
+        .section-title {
+            font-size: clamp(1.75rem, 4vw, 2.25rem);
+            font-weight: 800;
+            margin-bottom: 2.25rem;
+            color: white;
+            padding-bottom: 1.1rem;
+            border-bottom: 2px solid var(--border-glass);
+        }
+        .btn {
+            font-weight: 700;
+            padding: 0.85rem 2rem;
+            border-radius: var(--border-radius-input);
+            transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+            box-shadow: 0 4px 15px -5px rgba(59, 130, 246, 0.45);
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-primary-hover);
+            transform: translateY(-2.5px) scale(1.02);
+            box-shadow: 0 6px 20px -5px rgba(59, 130, 246, 0.55);
+        }
+        .btn-secondary {
+            background-color: rgba(55, 65, 81, 0.75);
+            color: var(--text-primary);
+        }
+        .btn-secondary:hover {
+            background-color: rgba(75, 85, 99, 0.85);
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background-color: rgba(220, 38, 38, 0.75);
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: rgba(185, 28, 28, 0.85);
+             transform: translateY(-2px);
+        }
+        .text-muted-light { color: var(--text-secondary); }
+
+        /* Chat Redesign - V2 */
+        .chat-section-wrapper.card-base { padding: 0; }
+        /* Mejoras en la sección de chat */
+        .chat-section-wrapper {
+            display: flex;
+            min-height: 70vh;
+            max-height: 80vh;
+            position: relative;
+            background: var(--bg-gradient-chat);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--border-radius-card);
+            overflow: hidden;
+        }
+        .chat-layout {
+            display: flex;
+            height: calc(100vh - 200px);
+            min-height: 550px;
+            max-height: 750px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .chat-list-panel {
+            width: 35%;
+            min-width: 300px;
+        .chat-list-panel {
+            width: 35%;
+            min-width: 300px;
+            max-width: 400px;
+            background-color: var(--bg-glass-sidebar);
+            border-left: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+        }
+        .friend-card {
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all var(--animation-speed) ease;
+            background: var(--bg-gradient-friends);
+        }
+        .friend-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow-card-hover);
+            border-color: rgba(139, 92, 246, 0.4); /* Purple accent */
+        }
+        .friend-header {
+            display: flex;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-glass);
+            margin-bottom: 1rem;
+        }
+        .friend-avatar {
+            width: 3.5rem;
+            height: 3.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-left: 1rem;
+            border: 3px solid var(--accent-tertiary); /* Purple border */
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+            transition: all var(--animation-speed) ease;
+        }
+        .friend-card:hover .friend-avatar {
+            transform: scale(1.05);
+        }
+        /* Online status indicator */
+        .friend-avatar-container {
+            position: relative;
+            margin-left: 1rem;
+        }
+        .status-indicator {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            background-color: var(--success-online);
+            border: 2px solid var(--bg-glass);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+        }
+        .status-offline {
+            background-color: var(--text-muted);
+        }
+        .friend-name {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            transition: color var(--animation-speed) ease;
+        }
+        .friend-card:hover .friend-name {
+            color: var(--accent-primary);
+        }
+        .friend-username {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .new-chat-btn {
+            background: none; border: none; color: var(--accent-primary); font-size: 1.5rem;
+            padding: 0.5rem; border-radius: 50%; transition: background-color 0.2s ease;
+        }
+        .new-chat-btn:hover { background-color: var(--accent-primary-active-bg); }
+        .chat-search-bar { padding: 1rem 1.5rem; }
+        .chat-search-bar input { width: 100%; font-size: 0.9rem; }
+        .chat-list-items {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 0.5rem 0;
+        }
+        .chat-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-right: 4px solid transparent;
+        }
+        .chat-item:hover { background-color: rgba(55, 65, 81, 0.3); }
+        .chat-item.active {
+            background-color: var(--accent-primary-active-bg);
+            border-right-color: var(--accent-primary);
+        }
+        .chat-item-avatar img {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            margin-left: 1rem;
+            object-fit: cover;
+        }
+        .chat-item-info { flex-grow: 1; overflow: hidden; }
+        .chat-item-name {
+            font-weight: 600; color: var(--text-primary); font-size: 1.05rem;
+            display: block;
+        }
+        .chat-item-preview {
+            font-size: 0.85rem; color: var(--text-secondary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-top: 0.1rem;
+        }
+        .chat-item-meta {
+            margin-right: auto;
+            text-align: left;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .unread-badge {
+            background-color: var(--accent-primary);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+        }
+        .chat-conversation-panel {
+            flex-grow: 1;
+            background-color: var(--bg-glass-chat-window);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-conversation-header {
+            padding: 1.25rem 1.75rem;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            align-items: center;
+        }
+        .chat-conversation-header img {
+            width: 48px; height: 48px; border-radius: 50%; margin-left: 1rem;
+        }
+        .chat-user-details h4 { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); }
+        .chat-user-details p { font-size: 0.8rem; color: var(--success-online); }
+        .chat-header-actions { margin-right: auto; display: flex; gap: 0.5rem; }
+        .chat-header-actions button { color: var(--text-secondary); font-size: 1.25rem; padding: 0.5rem; }
+        .chat-header-actions button:hover { color: var(--text-primary); background-color: rgba(255,255,255,0.05); border-radius: 50%;}
+        .chat-messages-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.5rem 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .message-group { display: flex; flex-direction: column; }
+        .message-group.sent { align-items: flex-start; }
+        .message-group.received { align-items: flex-end; }
+        .message-content {
+            padding: 0.8rem 1.2rem;
+            border-radius: 1.1rem;
+            max-width: 80%;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .message-content.sent {
+            background-image: linear-gradient(135deg, var(--accent-primary), #1E40AF);
+            color: white;
+            border-bottom-right-radius: 0.375rem;
+            margin-right: 0;
+            align-self: flex-start;
+        }
+        .message-content.received {
+            background-color: rgba(55, 65, 81, 0.95);
+            color: var(--text-primary);
+            border-bottom-left-radius: 0.375rem;
+            align-self: flex-end;
+        }
+        .message-timestamp {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            display: block;
+        }
+        .message-group.sent .message-timestamp { text-align: right; }
+        .message-group.received .message-timestamp { text-align: left; }
+        .chat-composer-area {
+            padding: 1rem 1.75rem;
+            border-top: 1px solid var(--border-glass);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .chat-composer-area textarea {
+            flex-grow: 1;
+            resize: none;
+            padding: 0.8rem 1rem;
+            min-height: 48px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .chat-composer-actions button {
+            color: var(--text-secondary); font-size: 1.35rem;
+            padding: 0.6rem;
+        }
+        .chat-composer-actions button:hover { color: var(--accent-primary); }
+        .send-btn {
+            background-color: var(--accent-primary);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 50%;
+            font-size: 1.25rem;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+        }
+        .send-btn:hover { background-color: var(--accent-primary-hover); transform: scale(1.05); }
+
+        /* Custom Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(17, 24, 39, 0.9);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius-input);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-1rem);
+            pointer-events: auto;
+        }
+        /* Edit Profile Form (Initially hidden) */
+        #edit-profile-form-container {
+            display: none; /* Hidden by default */
+        }
+        .post-image-display {
+            border-radius: 0.75rem; /* rounded-lg */
+            margin-bottom: 1.5rem; /* mb-6 */
+            width: 100%;
+            object-fit: cover;
+            max-height: 500px; /* Consistent with feed post image */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Estilos para las secciones de contenido */
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        /* Fix vertical nav layout */
+        @media (max-width: 768px) {
+            .vertical-nav {
+                position: static;
+                width: 100%;
+                margin-bottom: 1.5rem;
+                margin-left: 0;
+            }
+            .container.flex.flex-row-reverse {
+                flex-direction: column-reverse !important;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="min-h-screen flex flex-col">
+        <?php if ($user) { // Check if user data is loaded ?>
+        <header class="nav-header sticky top-0 z-50">
+            <div class="container mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center">
+                <div class="text-2xl font-bold text-white flex items-center">
+                    <img src="assets/img/logo.svg" alt="Logo" class="w-8 h-8 ml-2" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM0I4MkY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDIycy04LTQtOC0xMFY5bDgtMiA4IDJ2N2MwIDYtOCAxMC04IDEweiIgZmlsbD0icmdiYSg1OSwgMTMwLCAyNDYsIDAuMikiLz48L3N2Zz4='; this.style.filter='drop-shadow(0 0 2px rgba(59, 130, 246, 0.7))';">
+                    <a href="u.php"><span class="text-accent-primary">SUT</span> <span class="text-gray-100">Premium</span></a>
+                </div>
+                <div>
+                    <!-- Mobile menu button or other header elements can go here -->
+                </div>
+            </div>
+        </header>
+        
+        <div class="container mx-auto px-3 sm:px-4 py-10 flex flex-row-reverse">
+            <!-- Vertical Navigation Bar -->
+            <nav class="vertical-nav">
+                <a href="#" data-target="profile-content" class="nav-link active">
+                    <i class="bi bi-person-workspace mr-2 text-lg"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="#" data-target="feed-content" class="nav-link">
+                    <i class="bi bi-journals mr-2 text-lg"></i>
+                    <span>Posts</span>
+                </a>
+                <a href="#" data-target="following-content" class="nav-link">
+                    <i class="bi bi-person-check mr-2 text-lg"></i>
+                    <span>Following</span>
+                </a>
+                <a href="#" data-target="chat-content" class="nav-link">
+                    <i class="bi bi-chat-square-heart-fill mr-2 text-lg"></i>
+                    <span>Chat</span>
+                </a>
+                <a href="#" data-target="friends-content" class="nav-link">
+                    <i class="bi bi-people mr-2 text-lg"></i>
+                    <span>Friends</span>
+                </a>
+                <a href="http://localhost/WEP/frontend/login.html" id="logout-button" class="nav-link !text-red-400 hover:!bg-red-500/20 hover:!text-red-300 mt-auto" title="Log out">
+                    <i class="bi bi-box-arrow-right mr-2 text-lg"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+            
+            <!-- Main Content -->
+            <main class="flex-grow">
+            <section id="profile-content" class="content-section active">
+                <div id="profile-display-container">
+                    <div class="profile-card-bg glass-effect rounded-xl shadow-2xl overflow-hidden">
+                        <div class="profile-cover">
+                            </div>
+                        <div class="p-6 md:p-10 text-center">
+                            <img src="<?php echo !empty($user['avatar_url']) ? htmlspecialchars($user['avatar_url']) : DEFAULT_AVATAR; ?>" 
+                                 class="profile-avatar mx-auto" id="profile-avatar-img">
+                            <h1 class="text-3xl lg:text-5xl font-extrabold text-white mt-5" id="profile-display-name">
+                                <?php echo htmlspecialchars(!empty($user['display_name']) ? $user['display_name'] : $user['username']); ?>
+                            </h1>
+                            <p class="text-gray-300 mt-2">
+                                @<?php echo htmlspecialchars($user['username']); ?>
+                            </p>
+                            <p class="text-gray-400 mt-3 max-w-xl mx-auto" id="profile-display-bio">
+                                <?php echo !empty($user['bio']) ? nl2br(htmlspecialchars($user['bio'])) : 'No bio added yet.'; ?>
+                            </p>
+
+                            <div class="flex justify-center space-x-2 rtl:space-x-reverse mt-6">
+                                <div class="flex flex-col items-center px-4 py-2 rounded-lg bg-opacity-50 bg-gray-800">
+                                    <span class="text-2xl font-bold text-white"><?php echo $followers_count; ?></span>
+                                    <span class="text-gray-400 text-sm">Followers</span>
+                                </div>
+                                <div class="flex flex-col items-center px-4 py-2 rounded-lg bg-opacity-50 bg-gray-800">
+                                    <span class="text-2xl font-bold text-white"><?php echo $following_count; ?></span>
+                                    <span class="text-gray-400 text-sm">Following</span>
+                                </div>
+                                <div class="flex flex-col items-center px-4 py-2 rounded-lg bg-opacity-50 bg-gray-800">
+                                    <span class="text-2xl font-bold text-white"><?php echo $total_posts_count; ?></span>
+                                    <span class="text-gray-400 text-sm">Posts</span>
+                                </div>
+                            </div>
+                             <?php // Button depends on whether it's the current user's profile or another user's
+                                // Since this u.php always shows logged-in user's profile, it's always "Edit Profile"
+                            ?>
+{{ ... }}
+                            <button class="btn btn-secondary" id="cancel-edit-button">
+                                <i class="bi bi-x"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                    </div>
+                    <div>
+                        <!-- Mobile menu button or other header elements can go here -->
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Vertical Navigation Bar -->
+            <nav class="vertical-nav">
+                <div class="site-logo mb-6 mt-4 text-center">
+                    <img src="assets/img/logo.svg" alt="Logo" class="w-12 h-12 mx-auto mb-2" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjM0I4MkY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDIycy04LTQtOC0xMFY5bDgtMiA4IDJ2N2MwIDYtOCAxMC04IDEweiIgZmlsbD0icmdiYSg1OSwgMTMwLCAyNDYsIDAuMikiLz48L3N2Zz4='; this.style.filter='drop-shadow(0 0 2px rgba(59, 130, 246, 0.7))';">
+                    <h1 class="text-xl font-bold"><span class="text-accent-primary">SUT</span> <span class="text-white">Premium</span></h1>
+                </div>
+                
+                <a href="#" data-target="profile-content" class="nav-link active">
+                    <i class="bi bi-person-workspace mr-3 text-xl"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="#" data-target="feed-content" class="nav-link">
+                    <i class="bi bi-journals mr-3 text-xl"></i>
+                    <span>Posts</span>
+                </a>
+                <a href="#" data-target="following-content" class="nav-link">
+                    <i class="bi bi-person-check mr-3 text-xl"></i>
+                    <span>Following</span>
+                </a>
+                <a href="#" data-target="chat-content" class="nav-link">
+                    <i class="bi bi-chat-square-heart-fill mr-3 text-xl"></i>
+                    <span>Chat</span>
+                </a>
+                <a href="#" data-target="friends-content" class="nav-link">
+                    <i class="bi bi-people mr-3 text-xl"></i>
+                    <span>Friends</span>
+                </a>
+                
+                <div class="mt-auto mb-6">
+                    <a href="http://localhost/WEP/frontend/login.html" id="logout-button" class="nav-link !text-red-400 hover:!bg-red-500/20 hover:!text-red-300" title="Log out">
+                        <i class="bi bi-box-arrow-right mr-3 text-xl"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="main-container">
+                <!-- Main Content -->
+                <main class="main-content">
+                <section id="profile-content" class="content-section active">
+                    <div id="profile-display-container">
+                        <div class="profile-card-bg glass-effect rounded-xl shadow-2xl overflow-hidden">
+                            <div class="profile-cover">
+                                </div>
+                            <div class="p-6 md:p-10 text-center">
+                                <img src="<?php echo !empty($user['avatar_url']) ? htmlspecialchars($user['avatar_url']) : DEFAULT_AVATAR; ?>" 
+                                     class="profile-avatar mx-auto" id="profile-avatar-img">
+                                <h1 class="text-3xl lg:text-5xl font-extrabold text-white mt-5" id="profile-display-name">
+                                    <?php echo htmlspecialchars(!empty($user['display_name']) ? $user['display_name'] : $user['username']); ?>
+                                </h1>
+                                <p class="text-gray-300 mt-2">
+                                    @<?php echo htmlspecialchars($user['username']); ?>
+                                </p>
+                                <p class="text-gray-400 mt-3 max-w-xl mx-auto" id="profile-display-bio">
+                                    <?php echo !empty($user['bio']) ? nl2br(htmlspecialchars($user['bio'])) : 'No bio added yet.'; ?>
+                                </p>
+
+                                <div class="flex justify-center space-x-2 rtl:space-x-reverse mt-6">
+                                    <div class="flex flex-col items-center px-4 py-2 rounded-lg bg-opacity-50 bg-gray-800">
+                                        <span class="text-2xl font-bold text-white"><?php echo $followers_count; ?></span>
+                                        <span class="text-gray-400 text-sm">Followers</span>
+                                    </div>
+                                    <div class="flex flex-col items-center px-4 py-2 rounded-lg bg-opacity-50 bg-gray-800">
+                                        <span class="text-2xl font-bold text-white"><?php echo $following_count; ?></span>
+                                        <span class="text-gray-400 text-sm">Following</span>
+                                    </div>
+                                    <div class="flex flex-col items-center px-4 py-2 rounded-lg bg-opacity-50 bg-gray-800">
+                                        <span class="text-2xl font-bold text-white"><?php echo $total_posts_count; ?></span>
+                                        <span class="text-gray-400 text-sm">Posts</span>
+                                    </div>
+                                </div>
+                                <?php // Button depends on whether it's the current user's profile or another user's
+                                    // Since this u.php always shows logged-in user's profile, it's always "Edit Profile"
+                                ?>
+                                <button class="btn btn-secondary" id="cancel-edit-button">
+                                    <i class="bi bi-x"></i> Cancel
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check2"></i> Save Changes
+                                </button>
+                                <button class="btn btn-primary" id="edit-profile-button">
+                                    <i class="bi bi-pencil-alt"></i> Edit Profile
+                                </button>
+                                <div class="text-center mt-4">
+                                    <button class="btn btn-primary">View More Friends</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="edit-profile-form-container" class="card-base glass-effect mt-8" style="display: none;">
+                        <form id="profile-edit-form" action="api/profile_update.php" method="POST" enctype="multipart/form-data">
+                            <div class="mb-6">
+                                <label for="edit-display-name" class="block text-sm font-medium text-slate-300 mb-2">Display Name</label>
+                                <input type="text" id="edit-display-name" name="display_name" class="w-full" value="<?php echo htmlspecialchars(!empty($user['display_name']) ? $user['display_name'] : $user['username']); ?>">
+                            </div>
+                        </div>
+
+                        <h2 class="section-title mt-12">My Posts</h2>
+                        <div class="card-base glass-effect" id="my-posts-container">
+                            <?php if (empty($posts)): ?>
+                                <p class="text-slate-400 text-center py-10">No posts have been published yet.</p>
+                            <?php else: ?>
+                                <div class="space-y-8">
+                                <?php foreach ($posts as $post): ?>
+                                    <div class="card-base glass-effect post-card" data-post-id="<?php echo $post['id']; ?>">
+                                        <div class="flex items-center mb-6">
+                                            <img src="<?php echo !empty($user['avatar_url']) ? htmlspecialchars($user['avatar_url']) : DEFAULT_AVATAR; ?>" 
+                                                 alt="User Avatar" class="w-14 h-14 rounded-full ml-4 border-2 border-slate-600">
+                                            <div>
+                                                <h2 class="text-2xl font-bold text-white mb-8">Posts by <?php echo htmlspecialchars($user['username']); ?></h2>
+                                                <p class="text-sm text-muted-light"><?php echo htmlspecialchars(time_elapsed_string($post['created_at'])); // Assuming time_elapsed_string function exists ?></p>
+                                            </div>
+                                            <?php if ($is_current_user_profile): // Option to delete own post ?>
+                                                <button class="mr-auto text-slate-400 hover:text-danger-action p-2 rounded-full delete-post-btn" data-post-id="<?php echo $post['id']; ?>" title="Delete Post">
+                                                    <i class="bi bi-trash3-fill text-lg"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                        <p class="text-slate-200 mb-6 leading-relaxed text-base">
+                                            <?php echo htmlspecialchars($post['content']); ?>
+                                        </p>
+                                    </div>
+                                <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </section>
+
+                    <section id="feed-content" class="content-section">
+                        <div class="card-base glass-effect create-post-card">
+                            <h2 class="text-2xl font-bold text-white mb-8">Create Post</h2>
+                            <textarea id="create-post-textarea" class="w-full text-base" rows="5" placeholder="What's on your mind?"></textarea>
+                            <div class="mt-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div class="flex space-x-reverse space-x-3">
+                                    <button class="action-button text-2xl create-post-action-btn" title="Add Image"> <i class="bi bi-image-fill"></i> </button>
+                                    <button class="action-button text-2xl create-post-action-btn" title="Add Video"> <i class="bi bi-film"></i> </button>
+                                </div>
+                                <button class="btn btn-primary" id="create-post-btn">Post</button>
+                            </div>
+                        </div>
+                        <div class="card-base glass-effect post-card" data-post-id="static-post-1">
+                            <div class="flex items-center mb-6">
+                                <img src="https://placehold.co/56x56/8B5CF6/F5F3FF?text=Public" alt="User Avatar" class="w-14 h-14 rounded-full ml-4 border-2 border-slate-600">
+                                <div>
+                                    <p class="font-bold text-xl text-slate-50">Public User</p>
+                                    <p class="text-slate-400 text-center py-8">No posts have been published yet.</p>
+                                </div>
+                            </div>
+                            <p class="text-slate-200 mb-6 leading-relaxed text-base">
+                                This is a sample public post on the feed. It can be from any user.
+                                <a href="#" class="text-accent hover:underline font-semibold">#public</a>
+                            </p>
+                        </div>
+                    <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <section id="feed-content" class="content-section">
+            <div class="card-base glass-effect create-post-card">
+                <h2 class="text-2xl font-bold text-white mb-8">Create Post</h2>
+                <textarea id="create-post-textarea" class="w-full text-base" rows="5" placeholder="What's on your mind?"></textarea>
+                <div class="mt-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex space-x-reverse space-x-3">
+                        <button class="action-button text-2xl create-post-action-btn" title="Add Image"> <i class="bi bi-image-fill"></i> </button>
+                        <button class="action-button text-2xl create-post-action-btn" title="Add Video"> <i class="bi bi-film"></i> </button>
+                    </div>
+                    <button class="btn btn-primary" id="create-post-btn">Post</button>
+                </div>
+            </div>
+            <div class="card-base glass-effect post-card" data-post-id="static-post-1">
+                <div class="flex items-center mb-6">
+                    <img src="https://placehold.co/56x56/8B5CF6/F5F3FF?text=Public" alt="User Avatar" class="w-14 h-14 rounded-full ml-4 border-2 border-slate-600">
+                    <div>
+                        <p class="font-bold text-xl text-slate-50">Public User</p>
+                        <p class="text-slate-400 text-center py-8">No posts have been published yet.</p>
+                    </div>
+                </div>
+                <p class="text-slate-200 mb-6 leading-relaxed text-base">
+                    This is a sample public post on the feed. It can be from any user.
+                    <a href="#" class="text-accent hover:underline font-semibold">#public</a>
+                </p>
+            </div>
+        </section>
+
+        <section id="chat-content" class="content-section">
+            <div class="chat-container">
+                <!-- Chat Sidebar -->
+                <div class="chat-sidebar">
+                    <div class="chat-sidebar-header">
+                        <h2>Chats</h2>
+                        <button class="new-chat-btn"><i class="bi bi-pencil-square"></i></button>
+                    </div>
+                    <div class="chat-search">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Search messages..." />
+                    </div>
+                    <div class="chat-contact-list">
+                        <!-- Active chat -->
+                        <div class="chat-contact active">
+                            <div class="chat-contact-avatar">
+                                <img src="https://placehold.co/60x60/3B82F6/FFFFFF?text=J" alt="John Doe" />
+                                <span class="status-indicator online"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">John Doe</div>
+                                <div class="chat-contact-last-message">The new design looks great! I'm really impressed</div>
+                            </div>
+                            <div class="chat-contact-meta">
+                                <div class="chat-contact-time">12:45 PM</div>
+                                <div class="chat-contact-unread">2</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Other contacts -->
+                        <div class="chat-contact">
+                            <div class="chat-contact-avatar">
+                                <img src="https://placehold.co/60x60/10B981/FFFFFF?text=S" alt="Sarah Smith" />
+                                <span class="status-indicator online"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">Sarah Smith</div>
+                                <div class="chat-contact-last-message">Are we still meeting tomorrow?</div>
+                            </div>
+                            <div class="chat-contact-meta">
+                                <div class="chat-contact-time">10:32 AM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="chat-contact">
+                            <div class="chat-contact-avatar">
+                                <img src="https://placehold.co/60x60/EC4899/FFFFFF?text=A" alt="Alex Johnson" />
+                                <span class="status-indicator offline"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">Alex Johnson</div>
+                                <div class="chat-contact-last-message">Thanks for your help yesterday</div>
+                            </div>
+                            <div class="chat-contact-meta">
+                                <div class="chat-contact-time">Yesterday</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Main -->
+                <div class="chat-main">
+                    <div class="chat-header">
+                        <div class="chat-header-user">
+                            <img src="https://placehold.co/60x60/3B82F6/FFFFFF?text=J" alt="John Doe" />
+                            <div class="chat-header-user-info">
+                                <div class="chat-header-name">John Doe</div>
+                                <div class="chat-header-status">Online</div>
+                            </div>
+                        </div>
+                        <div class="chat-header-actions">
+                            <button><i class="bi bi-telephone"></i></button>
+                            <button><i class="bi bi-camera-video"></i></button>
+                            <button><i class="bi bi-info-circle"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages">
+                        <div class="message-date">Today</div>
+                        
+                        <div class="message received">
+                            <div class="message-avatar">
+                                <img src="https://placehold.co/40x40/3B82F6/FFFFFF?text=J" alt="John Doe" />
+                            </div>
+                            <div class="message-content">
+                                <div class="message-bubble">Hi there! How are you doing today?</div>
+                                <div class="message-time">10:30 AM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="message sent">
+                            <div class="message-content">
+                                <div class="message-bubble">Hey! I'm doing great, thanks for asking. How about you?</div>
+                                <div class="message-time">10:32 AM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="message received">
+                            <div class="message-avatar">
+                                <img src="https://placehold.co/40x40/3B82F6/FFFFFF?text=J" alt="John Doe" />
+                            </div>
+                            <div class="message-content">
+                                <div class="message-bubble">I'm good too. Just wanted to tell you that the new design looks great! I'm really impressed with what you've done.</div>
+                                <div class="message-time">10:34 AM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="message sent">
+                            <div class="message-content">
+                                <div class="message-bubble">Thank you! I spent a lot of time on it. I'm glad you like it.</div>
+                                <div class="message-time">10:36 AM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="message received">
+                            <div class="message-avatar">
+                                <img src="https://placehold.co/40x40/3B82F6/FFFFFF?text=J" alt="John Doe" />
+                            </div>
+                            <div class="message-content">
+                                <div class="message-bubble">The colors and layout are perfect. Great job!</div>
+                                <div class="message-time">10:45 AM</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input">
+                        <div class="chat-input-actions">
+                            <button><i class="bi bi-emoji-smile"></i></button>
+                            <button><i class="bi bi-paperclip"></i></button>
+                        </div>
+                        <input type="text" placeholder="Type a message..." />
+                        <button class="chat-send-btn"><i class="bi bi-send-fill"></i></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="friends-content" class="content-section">
+            <h2 class="section-title">Friends</h2>
+            <div class="card-base glass-effect friend-list">
+                <?php if (empty($friends)): ?>
+                    <p class="text-slate-400 text-center py-10">No friends have been added yet.</p>
+                <?php else: ?>
+                    <div class="space-y-8">
+                    <?php foreach ($friends as $friend): ?>
+                        <div class="flex items-center">
+                            <img src="<?php echo !empty($friend['avatar_url']) ? htmlspecialchars($friend['avatar_url']) : DEFAULT_AVATAR; ?>" 
+                                 alt="User Avatar" class="w-14 h-14 rounded-full ml-4 border-2 border-slate-600">
+                            <div class="ml-4">
+                                <p class="font-bold text-lg text-slate-50"><?php echo htmlspecialchars($friend['username']); ?></p>
+                                <p class="text-slate-400 text-sm"><?php echo htmlspecialchars($friend['display_name']); ?></p>
+                            </div>
+                            <?php if ($is_current_user_profile): // Option to unfollow friend ?>
+                                <button class="mr-auto text-slate-400 hover:text-danger-action p-2 rounded-full unfollow-btn" data-user-id="<?php echo $friend['id']; ?>" title="Unfollow">
+                                    <i class="bi bi-person-dash"></i>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+    </main>
+</div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize navigation
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('data-target');
+                
+                // Hide all sections
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                // Show target section
+                const targetSection = document.getElementById(targetId);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                }
+                
+                // Update active state on nav links
+                navLinks.forEach(navLink => {
+                    navLink.classList.remove('active');
+                });
+                this.classList.add('active');
+            });
+        });
+        
+        // Add shadow to header on scroll
+        window.addEventListener('scroll', function() {
+            const header = document.querySelector('.nav-header');
+            if (window.scrollY > 10) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+        
+        // Handle like/dislike functionality
+        const likeButtons = document.querySelectorAll('.like-button');
+        likeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const postId = this.getAttribute('data-post-id');
+                likePost(postId);
+            });
+        });
+        
+        // Function to handle liking a post
+        function likePost(postId) {
+            console.log('Liking post:', postId);
+            const likeButton = document.querySelector(`.like-button[data-post-id="${postId}"]`);
+            if (likeButton) {
+                likeButton.classList.add('liked');
+                likeButton.classList.add('animate-like');
+                
+                // Remove animation class after it finishes
+                setTimeout(() => {
+                    likeButton.classList.remove('animate-like');
+                }, 1000);
+                
+                // Remove dislike if present
+                const dislikeButton = document.querySelector(`.dislike-button[data-post-id="${postId}"]`);
+                if (dislikeButton) {
+                    dislikeButton.classList.remove('disliked');
+                }
+            }
+        }
+    });
+</script>
+<?php } // Close the if ($user) ?>
+</div>
+</body>
+</html>

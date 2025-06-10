@@ -1,0 +1,34 @@
+# حماية مجلد الرفع
+# منع تنفيذ ملفات PHP
+<Files "*.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# السماح فقط بالملفات المسموحة
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# منع عرض محتويات المجلد
+Options -Indexes
+
+# حد أقصى لحجم الملف (5MB)
+LimitRequestBody 5242880
+
+# Prevent execution of PHP files in upload directory
+php_flag engine off
+AddType text/plain .php .php3 .phtml .pht
+
+# Deny access to potentially dangerous files
+<FilesMatch "\.(php|php3|phtml|pht|pl|py|jsp|asp|sh|cgi)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Allow only specific file types
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|mp4|avi|mov|wmv|pdf|txt|doc|docx)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch> 

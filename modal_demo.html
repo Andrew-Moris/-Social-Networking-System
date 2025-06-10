@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Modals Demo - SUT Premium</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #1a1f2e;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --bg-card-hover: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a8b3;
+            --text-muted: #6b7280;
+            
+            --shadow-primary: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            --blur-glass: blur(20px);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .demo-card {
+            background: var(--bg-card);
+            backdrop-filter: var(--blur-glass);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-card);
+            transition: all 0.3s ease;
+        }
+        
+        .demo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-primary);
+        }
+        
+        .demo-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .demo-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .demo-desc {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+        
+        .demo-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            background: var(--primary-gradient);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Custom Modal Styles (copied from friends.php) */
+        .custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .custom-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: var(--bg-card);
+            backdrop-filter: var(--blur-glass);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            transform: scale(0.7) translateY(50px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-primary);
+        }
+        
+        .custom-modal.show .modal-content {
+            transform: scale(1) translateY(0);
+        }
+        
+        .modal-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .modal-message {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 2rem;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .modal-btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .modal-btn-primary {
+            background: var(--danger-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(250, 112, 154, 0.3);
+        }
+        
+        .modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(250, 112, 154, 0.4);
+        }
+        
+        .modal-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .modal-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .success-modal .modal-icon {
+            background: var(--success-gradient);
+        }
+        
+        .success-modal .modal-title {
+            color: #4facfe;
+        }
+        
+        .error-modal .modal-icon {
+            background: var(--danger-gradient);
+        }
+        
+        .error-modal .modal-title {
+            color: #fa709a;
+        }
+        
+        .back-link {
+            margin-top: 2rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Custom Modals Demo</h1>
+        <p class="subtitle">Experience the new beautiful modal system that replaces browser default dialogs</p>
+        
+        <div class="demo-grid">
+            <div class="demo-card">
+                <div class="demo-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <h3 class="demo-title">Confirmation Modal</h3>
+                <p class="demo-desc">Beautiful confirmation dialog for critical actions like unfollowing users</p>
+                <button class="demo-btn" onclick="showConfirmDemo()">
+                    <i class="bi bi-eye"></i>
+                    Try Demo
+                </button>
+            </div>
+            
+            <div class="demo-card">
+                <div class="demo-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h3 class="demo-title">Success Modal</h3>
+                <p class="demo-desc">Elegant success messages with auto-close functionality</p>
+                <button class="demo-btn" onclick="showSuccessDemo()">
+                    <i class="bi bi-eye"></i>
+                    Try Demo
+                </button>
+            </div>
+            
+            <div class="demo-card">
+                <div class="demo-icon">
+                    <i class="bi bi-x-circle"></i>
+                </div>
+                <h3 class="demo-title">Error Modal</h3>
+                <p class="demo-desc">Professional error messages with clear visual feedback</p>
+                <button class="demo-btn" onclick="showErrorDemo()">
+                    <i class="bi bi-eye"></i>
+                    Try Demo
+                </button>
+            </div>
+        </div>
+        
+        <a href="friends.php" class="back-link">
+            <i class="bi bi-arrow-left"></i>
+            Back to Friends Page
+        </a>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="custom-modal">
+        <div class="modal-content">
+            <div class="modal-icon">
+                <i class="bi bi-person-dash"></i>
+            </div>
+            <h3 class="modal-title">Confirm Action</h3>
+            <p class="modal-message">This is a beautiful confirmation dialog that replaces the browser default confirm(). It's fully customizable and matches your design!</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-primary" onclick="handleConfirm()">
+                    <i class="bi bi-check-lg"></i> Yes, Continue
+                </button>
+                <button class="modal-btn modal-btn-secondary" onclick="hideConfirmModal()">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Message Modal -->
+    <div id="messageModal" class="custom-modal">
+        <div class="modal-content">
+            <div class="modal-icon">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <h3 class="modal-title">Success!</h3>
+            <p class="modal-message">Operation completed successfully.</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-primary" onclick="hideMessageModal()">
+                    <i class="bi bi-check-lg"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showConfirmDemo() {
+            const modal = document.getElementById('confirmModal');
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    hideConfirmModal();
+                }
+            };
+        }
+        
+        function hideConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+        
+        function handleConfirm() {
+            hideConfirmModal();
+            showMessageModal('Confirmed!', 'You confirmed the action. This is how the flow works!', true);
+        }
+        
+        function showSuccessDemo() {
+            showMessageModal('Success!', 'This is a beautiful success message with auto-close feature. It will close automatically in 3 seconds.', true);
+        }
+        
+        function showErrorDemo() {
+            showMessageModal('Error Occurred', 'This is how error messages look. They require manual closing for better user attention.', false);
+        }
+        
+        function showMessageModal(title, message, isSuccess = true) {
+            const modal = document.getElementById('messageModal');
+            const modalContent = modal.querySelector('.modal-content');
+            const icon = modal.querySelector('.modal-icon i');
+            const titleElement = modal.querySelector('.modal-title');
+            const messageElement = modal.querySelector('.modal-message');
+            
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            if (isSuccess) {
+                modalContent.className = 'modal-content success-modal';
+                icon.className = 'bi bi-check-circle';
+            } else {
+                modalContent.className = 'modal-content error-modal';
+                icon.className = 'bi bi-exclamation-triangle';
+            }
+            
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    hideMessageModal();
+                }
+            };
+            
+            if (isSuccess) {
+                setTimeout(() => {
+                    hideMessageModal();
+                }, 3000);
+            }
+        }
+        
+        function hideMessageModal() {
+            const modal = document.getElementById('messageModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideConfirmModal();
+                hideMessageModal();
+            }
+        });
+    </script>
+</body>
+</html> 

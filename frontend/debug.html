@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار API - تشخيص المشكلة</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .card {
+            background: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        pre {
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto;
+            max-height: 300px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>تشخيص مشكلة الاتصال بـ API</h1>
+    
+    <div class="card">
+        <h2>1. معلومات الاتصال</h2>
+        <p>مسار الـ API: <span id="api-path"></span></p>
+        <p>عنوان URL كامل: <span id="full-url"></span></p>
+    </div>
+
+    <div class="card">
+        <h2>2. اختبار الاتصال العام</h2>
+        <button id="test-connection">اختبار الاتصال</button>
+        <div id="connection-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>3. إرسال طلب يدوي</h2>
+        <p>URL:</p>
+        <input type="text" id="manual-url" value="../api/register.php">
+        <p>البيانات (JSON):</p>
+        <textarea id="manual-data" rows="5">{"username": "testuser123", "password": "password123", "email": "test@example.com"}</textarea>
+        <button id="send-manual">إرسال</button>
+        <div id="manual-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>4. تحليل الأخطاء</h2>
+        <button id="check-xhr">فحص XHR</button>
+        <button id="check-fetch">فحص Fetch API</button>
+        <div id="analysis-result"></div>
+    </div>
+
+    <script>
+        document.getElementById('api-path').textContent = '../api/register.php';
+        document.getElementById('full-url').textContent = new URL('../api/register.php', window.location.href).href;
+
+        document.getElementById('test-connection').addEventListener('click', function() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = '<p>جاري الاختبار...</p>';
+            
+            fetch('../api/register.php')
+                .then(response => {
+                    resultDiv.innerHTML = `
+                        <p>تم الاتصال! الاستجابة:</p>
+                        <p>الحالة: ${response.status} ${response.statusText}</p>
+                        <p>نوع المحتوى: ${response.headers.get('content-type')}</p>
+                    `;
+                    return response.text();
+                })
+                .then(text => {
+                    resultDiv.innerHTML += `<pre>${text}</pre>`;
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `<p class="error">فشل الاتصال: ${error.message}</p>`;
+                });
+        });
+
+        document.getElementById('send-manual').addEventListener('click', function() {
+            const resultDiv = document.getElementById('manual-result');
+            resultDiv.innerHTML = '<p>جاري الإرسال...</p>';
+            
+            const url = document.getElementById('manual-url').value;
+            let data;
+            
+            try {
+                data = JSON.parse(document.getElementById('manual-data').value);
+            } catch (e) {
+                resultDiv.innerHTML = `<p class="error">خطأ في تنسيق JSON: ${e.message}</p>`;
+                return;
+            }
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    resultDiv.innerHTML = `
+                        <p>تم استلام الرد:</p>
+                        <p>الحالة: ${xhr.status}</p>
+                        <p>نوع المحتوى: ${xhr.getResponseHeader('Content-Type')}</p>
+                        <pre>${xhr.responseText}</pre>
+                    `;
+                }
+            };
+            
+            xhr.onerror = function() {
+                resultDiv.innerHTML = `<p class="error">فشل الاتصال: حدث خطأ في الشبكة</p>`;
+            };
+            
+            xhr.send(JSON.stringify(data));
+        });
+
+        document.getElementById('check-xhr').addEventListener('click', function() {
+            const resultDiv = document.getElementById('analysis-result');
+            resultDiv.innerHTML = '<p>جاري التحقق من دعم XMLHttpRequest...</p>';
+            
+            if (typeof XMLHttpRequest !== 'undefined') {
+                const xhr = new XMLHttpRequest();
+                resultDiv.innerHTML = `
+                    <p class="success">XMLHttpRequest مدعوم ✓</p>
+                    <p>خصائص الكائن:</p>
+                    <pre>${Object.keys(xhr).join('\n')}</pre>
+                `;
+            } else {
+                resultDiv.innerHTML = `<p class="error">XMLHttpRequest غير مدعوم ✗</p>`;
+            }
+        });
+
+        document.getElementById('check-fetch').addEventListener('click', function() {
+            const resultDiv = document.getElementById('analysis-result');
+            resultDiv.innerHTML = '<p>جاري التحقق من دعم Fetch API...</p>';
+            
+            if (typeof fetch !== 'undefined') {
+                resultDiv.innerHTML = `<p class="success">Fetch API مدعوم ✓</p>`;
+                
+                fetch('../api/register.php', { method: 'OPTIONS' })
+                    .then(response => {
+                        resultDiv.innerHTML += `
+                            <p>اختبار CORS ناجح ✓</p>
+                            <p>الحالة: ${response.status}</p>
+                            <p>رؤوس CORS:</p>
+                            <pre>Access-Control-Allow-Origin: ${response.headers.get('Access-Control-Allow-Origin') || 'غير موجود'}</pre>
+                        `;
+                    })
+                    .catch(error => {
+                        resultDiv.innerHTML += `<p class="error">فشل اختبار CORS: ${error.message}</p>`;
+                    });
+            } else {
+                resultDiv.innerHTML = `<p class="error">Fetch API غير مدعوم ✗</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

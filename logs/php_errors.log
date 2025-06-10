@@ -1,0 +1,11 @@
+[25-May-2025 23:44:37 Asia/Riyadh] Follow API Request - Method: POST, Data: {"action":"follow","followed_id":22}
+[25-May-2025 23:44:37 Asia/Riyadh] Notification error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'field list'
+[25-May-2025 23:44:37 Asia/Riyadh] Follow API Success - Action: follow, User: 22, Result: {"success":true,"message":"Successfully started following user","data":{"followed_user":"jane_smith","followers_count":2,"is_following":true}}
+[25-May-2025 23:44:39 Asia/Riyadh] Follow API Request - Method: POST, Data: {"action":"follow","followed_id":23}
+[25-May-2025 23:44:39 Asia/Riyadh] Notification error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'title' in 'field list'
+[25-May-2025 23:44:39 Asia/Riyadh] Follow API Success - Action: follow, User: 23, Result: {"success":true,"message":"Successfully started following user","data":{"followed_user":"mike_wilson","followers_count":2,"is_following":true}}
+[26-May-2025 00:45:49 Asia/Riyadh] Registration Error: اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل
+[26-May-2025 00:45:53 Asia/Riyadh] Registration Error: اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل
+[26-May-2025 00:45:54 Asia/Riyadh] Registration Error: اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل
+[26-May-2025 00:55:22 Asia/Riyadh] PHP Fatal error:  Cannot redeclare isLoggedIn() (previously declared in C:\xampp\htdocs\WEP\config.php:182) in C:\xampp\htdocs\WEP\functions.php on line 312
+[26-May-2025 00:55:30 Asia/Riyadh] PHP Fatal error:  Cannot redeclare isLoggedIn() (previously declared in C:\xampp\htdocs\WEP\config.php:182) in C:\xampp\htdocs\WEP\functions.php on line 312

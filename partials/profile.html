@@ -1,0 +1,300 @@
+<section id="profile">
+  <div class="profile-header">
+    <div class="avatar-container">
+      <div class="avatar-placeholder" id="profile-avatar-placeholder">
+        <i class="bi bi-person"></i>
+      </div>
+      <img src="" class="avatar d-none" id="profile-avatar" alt="avatar">
+    </div>
+    
+    <div class="profile-info">
+      <h1 class="profile-name" id="profile-name"></h1>
+      <div class="profile-username" id="profile-username"></div>
+      <p class="profile-bio" id="profile-bio"></p>
+      
+      <div class="profile-stats">
+        <div class="stat-item">
+          <span class="stat-value" id="posts-count">0</span>
+          <span class="stat-label"><i class="bi bi-file-post"></i> منشور</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="followers-count">0</span>
+          <span class="stat-label"><i class="bi bi-people"></i> متابع</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="following-count">0</span>
+          <span class="stat-label"><i class="bi bi-person-plus"></i> يتابع</span>
+        </div>
+      </div>
+      
+      <div class="profile-actions" id="follow-button-container">
+        <button class="profile-action-btn" id="follow-btn"><i class="bi bi-person-plus"></i> متابعة</button>
+        <button class="profile-action-btn secondary"><i class="bi bi-envelope"></i> مراسلة</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="content-section">
+    <h2 class="section-title"><i class="bi bi-pin-angle"></i> المنشورات المثبتة</h2>
+    <div id="pinned-posts">
+      <p class="text-center text-muted">لا توجد منشورات مثبتة حاليًا</p>
+    </div>
+  </div>
+  
+  <div class="content-section">
+    <h2 class="section-title"><i class="bi bi-info-circle"></i> نبذة عن المستخدم</h2>
+    <div id="user-about" class="profile-bio-extended">
+      <p id="extended-bio"></p>
+      <div class="user-info-items">
+        <div class="user-info-item"><i class="bi bi-geo-alt"></i> <span id="user-location">غير محدد</span></div>
+        <div class="user-info-item"><i class="bi bi-calendar3"></i> انضم <span id="user-joined-date"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function loadProfileData(userId) {
+  const loadingContainer = document.createElement('div');
+  loadingContainer.className = 'loading-container';
+  loadingContainer.innerHTML = `
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">جاري التحميل...</span>
+    </div>
+    <div class="loading-text">جاري تحميل بيانات المستخدم...</div>
+  `;
+  
+  fetch(`/WEP/api/users.php?id=${userId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        document.getElementById('profile-name').textContent = data.user.full_name || data.user.username;
+        document.getElementById('profile-username').textContent = '@' + data.user.username;
+        document.getElementById('profile-bio').textContent = data.user.bio || 'لا توجد نبذة';
+        document.getElementById('extended-bio').textContent = data.user.bio || 'لم يضف المستخدم نبذة تعريفية بعد.';
+        
+        if (data.user.avatar_url) {
+          const avatarImg = document.getElementById('profile-avatar');
+          avatarImg.src = data.user.avatar_url;
+          avatarImg.classList.remove('d-none');
+          document.getElementById('profile-avatar-placeholder').classList.add('d-none');
+        } else {
+          document.getElementById('profile-avatar').classList.add('d-none');
+          document.getElementById('profile-avatar-placeholder').classList.remove('d-none');
+        }
+        
+        if (data.user.location) {
+          document.getElementById('user-location').textContent = data.user.location;
+        }
+        
+        if (data.user.created_at) {
+          const joinDate = new Date(data.user.created_at);
+          document.getElementById('user-joined-date').textContent = joinDate.toLocaleDateString('ar-EG', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+        } else {
+          document.getElementById('user-joined-date').textContent = 'غير معروف';
+        }
+        
+        updateWithAnimation('posts-count', data.stats?.posts_count || '0');
+        updateWithAnimation('followers-count', data.stats?.followers_count || '0');
+        updateWithAnimation('following-count', data.stats?.following_count || '0');
+        
+        updateFollowButton(data.user.id, data.is_following);
+      } else {
+        showError('حدث خطأ أثناء تحميل بيانات الملف الشخصي');
+      }
+    })
+    .catch(error => {
+      console.error('Error loading profile data:', error);
+      showError('تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى لاحقًا');
+    });
+}
+
+function updateWithAnimation(elementId, value) {
+  const element = document.getElementById(elementId);
+  element.classList.add('pulse');
+  element.textContent = value;
+  
+  setTimeout(() => {
+    element.classList.remove('pulse');
+  }, 2000);
+}
+
+function showError(message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'alert alert-danger';
+  errorDiv.textContent = message;
+  
+  const container = document.querySelector('.profile-header');
+  container.appendChild(errorDiv);
+  
+  setTimeout(() => {
+    errorDiv.remove();
+  }, 5000);
+}
+
+function updateFollowButton(targetUserId, isFollowing) {
+  const currentUserId = sessionStorage.getItem('current_user_id');
+  const followBtn = document.getElementById('follow-btn');
+  const container = document.getElementById('follow-button-container');
+  
+  if (targetUserId == currentUserId) {
+    container.innerHTML = `
+      <a href="edit_profile.php" class="profile-action-btn"><i class="bi bi-pencil"></i> تعديل الملف الشخصي</a>
+      <a href="settings.php" class="profile-action-btn secondary"><i class="bi bi-gear"></i> الإعدادات</a>
+    `;
+    return;
+  }
+  
+  if (isFollowing) {
+    followBtn.innerHTML = '<i class="bi bi-person-dash"></i> إلغاء المتابعة';
+    followBtn.classList.add('secondary');
+  } else {
+    followBtn.innerHTML = '<i class="bi bi-person-plus"></i> متابعة';
+    followBtn.classList.remove('secondary');
+  }
+  
+  followBtn.onclick = function() {
+    const originalHTML = followBtn.innerHTML;
+    followBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> جاري التحديث...';
+    followBtn.disabled = true;
+    
+    const action = isFollowing ? 'unfollow' : 'follow';
+    
+    fetch('/WEP/api/follow.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify({
+        action: action,
+        target_id: targetUserId
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      followBtn.disabled = false;
+      
+      if (data.status === 'success') {
+        isFollowing = !isFollowing;
+        updateFollowButton(targetUserId, isFollowing);
+        
+        const followerCount = document.getElementById('followers-count');
+        let count = parseInt(followerCount.textContent);
+        updateWithAnimation('followers-count', isFollowing ? (count + 1) : (count - 1));
+      } else {
+        followBtn.innerHTML = originalHTML;
+        showError(data.message || 'حدث خطأ أثناء تحديث حالة المتابعة');
+      }
+    })
+    .catch(error => {
+      console.error('Error updating follow status:', error);
+      followBtn.disabled = false;
+      followBtn.innerHTML = originalHTML;
+      showError('تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى');
+    });
+  };
+}
+
+function loadPinnedPosts(userId) {
+  fetch(`/WEP/api/posts.php?user_id=${userId}&pinned=1`)
+    .then(response => response.json())
+    .then(data => {
+      const pinnedPostsContainer = document.getElementById('pinned-posts');
+      
+      if (data.posts && data.posts.length > 0) {
+        pinnedPostsContainer.innerHTML = '';
+        
+        data.posts.forEach(post => {
+          const postElement = createPostElement(post);
+          pinnedPostsContainer.appendChild(postElement);
+        });
+      } else {
+        pinnedPostsContainer.innerHTML = '<p class="text-center text-muted">لا توجد منشورات مثبتة حاليًا</p>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading pinned posts:', error);
+    });
+}
+
+function createPostElement(post) {
+  const postDiv = document.createElement('div');
+  postDiv.className = 'post';
+  
+  const postHeader = document.createElement('div');
+  postHeader.className = 'post-header';
+  
+  let avatarHTML = '';
+  if (post.user.avatar_url) {
+    avatarHTML = `<img src="${post.user.avatar_url}" alt="${post.user.username}" class="post-avatar-placeholder">`;
+  } else {
+    avatarHTML = `<div class="post-avatar-placeholder"><i class="bi bi-person"></i></div>`;
+  }
+  
+  const postDate = new Date(post.created_at);
+  const formattedDate = postDate.toLocaleDateString('ar-EG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  postHeader.innerHTML = `
+    ${avatarHTML}
+    <div class="post-user-info">
+      <a href="/WEP/profile.php?username=${post.user.username}" class="post-username">${post.user.username}</a>
+      <div class="post-time">${formattedDate}</div>
+    </div>
+  `;
+  
+  const postContent = document.createElement('div');
+  postContent.className = 'post-content';
+  postContent.textContent = post.content;
+  
+  let postImageHTML = '';
+  if (post.image_url) {
+    postImageHTML = `<img src="${post.image_url}" alt="صورة المنشور" class="post-image">`;
+  }
+  
+  const postActions = document.createElement('div');
+  postActions.className = 'post-actions';
+  postActions.innerHTML = `
+    <div class="post-action" data-post-id="${post.id}" data-action="like">
+      <i class="bi bi-heart${post.liked ? '-fill' : ''}"></i> ${post.likes_count || 0}
+    </div>
+    <div class="post-action" data-post-id="${post.id}" data-action="comment">
+      <i class="bi bi-chat"></i> ${post.comments_count || 0}
+    </div>
+    <div class="post-action" data-post-id="${post.id}" data-action="share">
+      <i class="bi bi-share"></i>
+    </div>
+  `;
+  
+  postDiv.appendChild(postHeader);
+  postDiv.appendChild(postContent);
+  if (postImageHTML) {
+    const imgContainer = document.createElement('div');
+    imgContainer.innerHTML = postImageHTML;
+    postDiv.appendChild(imgContainer);
+  }
+  postDiv.appendChild(postActions);
+  
+  return postDiv;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const userId = window.currentProfileId || sessionStorage.getItem('current_user_id');
+  if (userId) {
+    loadProfileData(userId);
+    loadPinnedPosts(userId);
+  } else {
+    showError('لم يتم تحديد معرف المستخدم');
+  }
+});
+</script>

@@ -1,0 +1,5 @@
+<?php
+// تحويل المستخدم إلى الصفحة المصححة
+header('Location: chat_fixed.php');
+exit;
+?>

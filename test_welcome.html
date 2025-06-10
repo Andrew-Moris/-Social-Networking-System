@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>مرحباً بك</title>
+    <style>
+        body { font-family: Arial; max-width: 500px; margin: 20px auto; padding: 20px; text-align: center; }
+        .welcome { font-size: 24px; margin: 20px 0; }
+        .logout { padding: 10px 20px; background: #dc3545; color: white; text-decoration: none; display: inline-block; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1 class="welcome">مرحباً بك في النظام</h1>
+    <p>تم تسجيل دخولك بنجاح</p>
+    <a href="test_logout.php" class="logout">تسجيل الخروج</a>
+
+    <script>
+        fetch('check_session.php')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.logged_in) {
+                    window.location.href = 'test_login.html';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.location.href = 'test_login.html';
+            });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,12 @@
+# حماية مجلد الأفاتار
+Options -Indexes
+<Files "*.php">
+Order Allow,Deny
+Deny from all
+</Files>
+
+# السماح بالصور فقط
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>

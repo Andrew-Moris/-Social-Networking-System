@@ -1,0 +1,109 @@
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.nav-header { 
+    background: rgba(10, 15, 28, 0.85); 
+    backdrop-filter: blur(15px); 
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+    position: sticky; 
+    top: 0; 
+    z-index: 1000; 
+    padding: 1rem 0; 
+    direction: rtl; 
+}
+
+.container { 
+    max-width: 1200px; 
+    margin: 0 auto; 
+    padding: 0 1rem; 
+}
+
+.nav-header .text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 700;
+}
+
+.nav-header .text-white {
+    color: #ffffff;
+}
+
+.nav-header .text-gray-100 {
+    color: #f3f4f6;
+}
+
+.nav-header .text-gray-300 {
+    color: #d1d5db;
+}
+
+.nav-header .text-blue-400 {
+    color: #60a5fa;
+}
+
+.nav-header .text-red-400 {
+    color: #f87171;
+}
+
+.nav-header .hover\:text-white:hover {
+    color: #ffffff;
+}
+
+.nav-header .hover\:text-blue-400:hover {
+    color: #60a5fa;
+}
+
+.nav-header .hover\:text-red-400:hover {
+    color: #f87171;
+}
+
+.nav-header .transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.nav-header .flex {
+    display: flex;
+}
+
+.nav-header .items-center {
+    align-items: center;
+}
+
+.nav-header .justify-between {
+    justify-content: space-between;
+}
+
+.nav-header .gap-5 {
+    gap: 1.25rem;
+}
+
+.nav-header .p-1 {
+    padding: 0.25rem;
+}
+
+.nav-header .mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.nav-header .px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.nav-header .text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+}
+
+@media (min-width: 768px) {
+    .nav-header .md\:gap-6 {
+        gap: 1.5rem;
+    }
+}

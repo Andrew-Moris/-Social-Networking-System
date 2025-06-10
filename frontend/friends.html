@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUT Premium | الأصدقاء</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script defer src="js/main.js"></script>
+    <style>
+        .friends-container {
+            margin: 2.5rem auto 0 auto;
+            max-width: 900px;
+            padding: 0 1rem;
+        }
+        .friends-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .tab-btn {
+            background: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #00bfff;
+            cursor: pointer;
+            box-shadow: 0 2px 12px #00bfff22;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: linear-gradient(90deg, #00bfff 30%, #f9f871 100%);
+            color: #fff;
+            box-shadow: 0 4px 16px #00bfff33;
+        }
+        .tab-btn:hover:not(.active) {
+            background: #f9f87111;
+            transform: translateY(-2px);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .friends-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .friend-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 16px #00bfff22;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.7rem;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .friend-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px #00bfff33;
+        }
+        .friend-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #00bfff;
+            box-shadow: 0 4px 16px #00bfff33;
+        }
+        .friend-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #00bfff;
+            margin-top: 0.3rem;
+        }
+        .friend-info {
+            font-size: 0.95rem;
+            color: #555;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        .friend-actions {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 0.5rem;
+        }
+        .friend-btn {
+            background: none;
+            border: none;
+            color: #00bfff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0.4rem 0.6rem;
+            border-radius: 8px;
+        }
+        .friend-btn:hover {
+            background: #00bfff11;
+            transform: scale(1.15);
+        }
+        .online-indicator {
+            position: absolute;
+            top: 1.2rem;
+            right: 1.2rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            box-shadow: 0 0 5px #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+        .requests-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .request-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 16px #00bfff22;
+            padding: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.2s;
+        }
+        .request-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 20px #00bfff33;
+        }
+        .request-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .request-content {
+            flex: 1;
+        }
+        .request-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #00bfff;
+        }
+        .request-time {
+            font-size: 0.9rem;
+            color: #bdbd6d;
+            margin-top: 0.2rem;
+        }
+        .request-info {
+            margin-top: 0.3rem;
+            font-size: 0.95rem;
+            color: #555;
+        }
+        .request-actions {
+            display: flex;
+            gap: 0.8rem;
+        }
+        .accept-btn, .reject-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .accept-btn {
+            background: linear-gradient(90deg, #00bfff 30%, #f9f871 100%);
+            color: #fff;
+            box-shadow: 0 2px 8px #00bfff33;
+        }
+        .reject-btn {
+            background: #f5f5f5;
+            color: #666;
+        }
+        .accept-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px #00bfff44;
+        }
+        .reject-btn:hover {
+            background: #eee;
+            transform: scale(1.05);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #00bfff;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .empty-state p {
+            color: #666;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .search-friends {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        .search-friends input {
+            width: 100%;
+            padding: 0.8rem 3rem 0.8rem 1rem;
+            border: none;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 2px 12px #00bfff22;
+            font-size: 1.05rem;
+            transition: box-shadow 0.2s;
+        }
+        .search-friends input:focus {
+            outline: none;
+            box-shadow: 0 4px 16px #00bfff33;
+        }
+        .search-friends i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #00bfff;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="sut-app">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="https://i.pravatar.cc/100?img=1" alt="SUT Logo">
+                <span>SUT Premium</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html"><i class="bi bi-house"></i> الرئيسية</a>
+                <a href="notifications.html"><i class="bi bi-bell"></i> الإشعارات</a>
+                <a href="friends.html" class="active"><i class="bi bi-people"></i> الأصدقاء</a>
+                <a href="chat.html"><i class="bi bi-chat-dots"></i> المحادثات</a>
+                <a href="profile.html"><i class="bi bi-person"></i> البروفايل</a>
+                <a href="#"><i class="bi bi-gear"></i> الإعدادات</a>
+            </nav>
+            <div class="sidebar-profile">
+              </div>
+        </aside>
+        <main class="main-content">
+            <div class="friends-container">
+                <h2 style="margin:0 0 1.5rem 0; color:#00bfff; text-align:center; font-weight:bold;">الأصدقاء</h2>
+                
+                <div class="friends-tabs">
+                    <button class="tab-btn active" data-tab="friends"><i class="bi bi-people-fill"></i> الأصدقاء</button>
+                    <button class="tab-btn" data-tab="requests"><i class="bi bi-person-plus"></i> طلبات الصداقة <span class="request-count">(3)</span></button>
+                    <button class="tab-btn" data-tab="suggestions"><i class="bi bi-stars"></i> اقتراحات</button>
+                </div>
+                
+                <div class="tab-content active" id="friends-tab">
+                    <div id="posts-feed" style="margin-bottom:2rem;"></div>
+                    <div class="search-friends">
+                        <input type="text" placeholder="ابحث في قائمة الأصدقاء...">
+                        <i class="bi bi-search"></i>
+                    </div>
+                    
+                    <div class="friends-grid">
+                        <div class="friend-card">
+                            <div class="online-indicator"></div>
+                            <img class="friend-avatar" src="https://i.pravatar.cc/100?img=10" alt="Friend">
+                            <div class="friend-name">محمد أحمد</div>
+                            <div class="friend-info">طالب هندسة كهرباء</div>
+                            <div class="friend-actions">
+                                <button class="friend-btn" title="محادثة"><i class="bi bi-chat-dots"></i></button>
+                                <button class="friend-btn" title="الملف الشخصي"><i class="bi bi-person"></i></button>
+                                <button class="friend-btn" title="إزالة"><i class="bi bi-person-x"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div class="friend-card">
+                            <img class="friend-avatar" src="https://i.pravatar.cc/100?img=5" alt="Friend">
+                            <div class="friend-name">سارة علي</div>
+                            <div class="friend-info">طالبة هندسة حاسبات</div>
+                            <div class="friend-actions">
+                                <button class="friend-btn" title="محادثة"><i class="bi bi-chat-dots"></i></button>
+                                <button class="friend-btn" title="الملف الشخصي"><i class="bi bi-person"></i></button>
+                                <button class="friend-btn" title="إزالة"><i class="bi bi-person-x"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div class="friend-card">
+                            <div class="online-indicator"></div>
+                            <img class="friend-avatar" src="https://i.pravatar.cc/100?img=11" alt="Friend">
+                            <div class="friend-name">مروان خالد</div>
+                            <div class="friend-info">طالب هندسة اتصالات</div>
+                            <div class="friend-actions">
+                                <button class="friend-btn" title="محادثة"><i class="bi bi-chat-dots"></i></button>
+                                <button class="friend-btn" title="الملف الشخصي"><i class="bi bi-person"></i></button>
+                                <button class="friend-btn" title="إزالة"><i class="bi bi-person-x"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div class="friend-card">
+                            <img class="friend-avatar" src="https://i.pravatar.cc/100?img=9" alt="Friend">
+                            <div class="friend-name">هدى عماد</div>
+                            <div class="friend-info">طالبة هندسة ميكانيكا</div>
+                            <div class="friend-actions">
+                                <button class="friend-btn" title="محادثة"><i class="bi bi-chat-dots"></i></button>
+                                <button class="friend-btn" title="الملف الشخصي"><i class="bi bi-person"></i></button>
+                                <button class="friend-btn" title="إزالة"><i class="bi bi-person-x"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="requests-tab">
+                    <div class="requests-list">
+                        <div class="request-card">
+                            <img class="request-avatar" src="https://i.pravatar.cc/100?img=15" alt="Friend">
+                            <div class="request-content">
+                                <div class="request-name">أمير محمود</div>
+                                <div class="request-time">منذ 10 دقائق</div>
+                                <div class="request-info">لديكم 3 أصدقاء مشتركين</div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="accept-btn">قبول</button>
+                                <button class="reject-btn">رفض</button>
+                            </div>
+                        </div>
+                        
+                        <div class="request-card">
+                            <img class="request-avatar" src="https://i.pravatar.cc/100?img=18" alt="Friend">
+                            <div class="request-content">
+                                <div class="request-name">حسام علي</div>
+                                <div class="request-time">منذ 5 ساعات</div>
+                                <div class="request-info">طالب هندسة مدنية</div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="accept-btn">قبول</button>
+                                <button class="reject-btn">رفض</button>
+                            </div>
+                        </div>
+                        
+                        <div class="request-card">
+                            <img class="request-avatar" src="https://i.pravatar.cc/100?img=20" alt="Friend">
+                            <div class="request-content">
+                                <div class="request-name">نورا سمير</div>
+                                <div class="request-time">منذ يوم واحد</div>
+                                <div class="request-info">طالبة هندسة برمجيات</div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="accept-btn">قبول</button>
+                                <button class="reject-btn">رفض</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="suggestions-tab">
+                    <div class="empty-state">
+                        <i class="bi bi-stars"></i>
+                        <h3>ستظهر اقتراحات قريبًا!</h3>
+                        <p>نعمل على تحليل اهتماماتك ودراستك لاقتراح أصدقاء جدد قد تعرفهم</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                const tabId = this.getAttribute('data-tab') + '-tab';
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        const searchInput = document.querySelector('.search-friends input');
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            const friendCards = document.querySelectorAll('.friend-card');
+            
+            friendCards.forEach(card => {
+                const name = card.querySelector('.friend-name').textContent.toLowerCase();
+                const info = card.querySelector('.friend-info').textContent.toLowerCase();
+                
+                if (name.includes(query) || info.includes(query)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+        
+        document.querySelectorAll('.friend-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.style.transform = 'scale(1.3)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 200);
+                
+                const title = this.getAttribute('title');
+                const friendCard = this.closest('.friend-card');
+                const friendName = friendCard.querySelector('.friend-name').textContent;
+                
+                if (title === 'إزالة') {
+                    if (confirm(`هل أنت متأكد من إزالة ${friendName} من قائمة الأصدقاء؟`)) {
+                        friendCard.style.transform = 'scale(0.8)';
+                        friendCard.style.opacity = '0';
+                        setTimeout(() => {
+                            friendCard.remove();
+                            showToast(`تم إزالة ${friendName} من قائمة الأصدقاء`);
+                        }, 300);
+                    }
+                } else if (title === 'محادثة') {
+                    showToast(`سيتم فتح محادثة مع ${friendName} قريبًا`);
+                } else if (title === 'الملف الشخصي') {
+                    window.location.href = 'profile.html';
+                }
+            });
+        });
+        
+        document.querySelectorAll('.accept-btn, .reject-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const isAccept = this.classList.contains('accept-btn');
+                const requestCard = this.closest('.request-card');
+                const userName = requestCard.querySelector('.request-name').textContent;
+                
+                requestCard.style.transition = 'all 0.3s';
+                
+                if (isAccept) {
+                    requestCard.style.background = 'linear-gradient(90deg, #00bfff0f 0%, #fff 100%)';
+                    setTimeout(() => {
+                        requestCard.style.transform = 'translateX(100%)';
+                        requestCard.style.opacity = '0';
+                        setTimeout(() => {
+                            requestCard.remove();
+                            updateRequestCount();
+                            showToast(`تمت إضافة ${userName} إلى قائمة الأصدقاء`);
+                        }, 300);
+                    }, 400);
+                } else {
+                    requestCard.style.background = '#ff000011';
+                    setTimeout(() => {
+                        requestCard.style.transform = 'translateX(100%)';
+                        requestCard.style.opacity = '0';
+                        setTimeout(() => {
+                            requestCard.remove();
+                            updateRequestCount();
+                            showToast(`تم رفض طلب ${userName}`);
+                        }, 300);
+                    }, 400);
+                }
+            });
+        });
+        
+        function updateRequestCount() {
+            const count = document.querySelectorAll('.request-card').length;
+            document.querySelector('.request-count').textContent = `(${count})`;
+            
+            if (count === 0) {
+                const requestsTab = document.getElementById('requests-tab');
+                requestsTab.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-envelope-check"></i>
+                        <h3>لا توجد طلبات صداقة</h3>
+                        <p>ستظهر طلبات الصداقة الجديدة هنا</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function showToast(message) {
+            let toast = document.querySelector('.toast');
+            
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    left: 20px;
+                    background: #00bfff;
+                    color: white;
+                    padding: 0.7rem 1.2rem;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px #00bfff44;
+                    z-index: 1000;
+                    transform: translateY(100px);
+                    opacity: 0;
+                    transition: all 0.3s;
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            toast.textContent = message;
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.transform = 'translateY(100px)';
+                toast.style.opacity = '0';
+            }, 3000);
+        }
+
+        function renderPostsFeed() {
+            const postsFeed = document.getElementById('posts-feed');
+            if (!postsFeed) return;
+            let posts = JSON.parse(localStorage.getItem('sut_posts') || '[]');
+            if (posts.length === 0) {
+                postsFeed.innerHTML = '<div style="text-align:center;color:#aaa;margin-bottom:1.5rem">لا توجد منشورات بعد</div>';
+                return;
+            }
+            postsFeed.innerHTML = posts.map(post => `
+                <div class="post-card" style="background:#fff;border-radius:16px;box-shadow:0 2px 12px #00bfff22;padding:1.2rem 1.5rem;margin-bottom:1.2rem;">
+                    ${post.image ? `<img src="${post.image}" alt="صورة المنشور" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;box-shadow:0 2px 8px #a5e3ff33;margin-bottom:0.7rem;">` : ''}
+                    <div style="font-size:1.08rem;color:#222;margin-bottom:0.5rem;">${post.content}</div>
+                    <div style="font-size:0.95rem;color:#00bfff;text-align:left;">${new Date(post.date).toLocaleString('ar-EG')}</div>
+                </div>
+            `).join('');
+        }
+        renderPostsFeed();
+    </script>
+</body>
+</html> 

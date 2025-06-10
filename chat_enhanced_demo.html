@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التحسينات المتقدمة لواجهة المحادثة 🚀</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #1a1f2e;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a8b3;
+            --blur-glass: blur(20px);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            height: calc(100vh - 4rem);
+        }
+        
+        .sidebar-demo {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: var(--blur-glass);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            background-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.02) 50%, rgba(0, 0, 0, 0.04) 100%);
+        }
+        
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+        }
+        
+        .conversation-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateX(4px);
+        }
+        
+        .conversation-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            object-fit: cover;
+        }
+        
+        .conversation-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .conversation-last-message {
+            font-size: 0.875rem;
+            color: rgba(161, 168, 179, 0.9);
+            line-height: 1.4;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+        
+        .conversation-time {
+            font-size: 0.8rem;
+            color: rgba(156, 163, 175, 0.8);
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            backdrop-filter: blur(4px);
+        }
+        
+        .unread-badge {
+            min-width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(8px);
+            padding: 0 0.5rem;
+            animation: pulse-badge 2s infinite;
+        }
+        
+        @keyframes pulse-badge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .chat-demo {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: var(--blur-glass);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            background-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.02) 50%, rgba(0, 0, 0, 0.04) 100%);
+        }
+        
+        .chat-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .message-bubble {
+            max-width: 60%;
+            min-height: 2.5rem;
+            padding: 1rem 1.25rem;
+            border-radius: 1.5rem;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.15s ease-in-out;
+            margin-bottom: 0.5rem;
+            display: inline-flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            backdrop-filter: blur(12px);
+        }
+        
+        .sent-message {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: #ffffff;
+            border-radius: 1.5rem 1.5rem 0.5rem 1.5rem;
+            margin-left: 60px;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4), 0 2px 8px rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sent-message:hover {
+            filter: brightness(1.1);
+            transform: translateY(-0.125rem) scale(1.02);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.6), 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .received-message {
+            background: rgba(71, 85, 105, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            color: #f8fafc;
+            border-radius: 1.5rem 1.5rem 1.5rem 0.5rem;
+            margin-right: 60px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .received-message:hover {
+            background: rgba(71, 85, 105, 1);
+            transform: translateY(-0.125rem) scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .message-time {
+            font-size: 0.625rem;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-top: 0.125rem;
+        }
+        
+        .status-icon {
+            font-size: 0.625rem;
+            margin-left: 0.25rem;
+            line-height: 1;
+        }
+        
+        .status-icon.read {
+            color: rgba(52, 211, 153, 0.9);
+            font-weight: 700;
+        }
+        
+        .chat-input-area {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .input-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            border-radius: 1.5rem;
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .media-btn {
+            padding: 0.75rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            color: #f1f5f9;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 3rem;
+            height: 3rem;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .media-btn:hover {
+            transform: translateY(-3px) scale(1.08);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            color: #ffffff;
+            font-size: 1rem;
+            resize: none;
+            min-height: 56px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            line-height: 1.6;
+            backdrop-filter: blur(16px);
+            font-weight: 500;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(59, 130, 246, 0.1);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.1) 100%);
+            transform: scale(1.02);
+        }
+        
+        .send-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            border-radius: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1rem;
+            min-width: 120px;
+            min-height: 56px;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-4px) scale(1.08);
+            box-shadow: 0 12px 40px rgba(16, 185, 129, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+        
+        .send-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .send-btn:hover::before {
+            left: 100%;
+        }
+        
+        @keyframes sendPulse {
+            0% { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+            50% { box-shadow: 0 6px 24px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+            100% { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+        }
+        
+        .send-btn.sending {
+            animation: sendPulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="sidebar-demo">
+            <h2 class="text-xl font-bold mb-6 text-center">الشريط الجانبي المحسن</h2>
+            
+            <div class="conversation-item" style="position: relative;">
+                <img src="https://ui-avatars.com/api/?name=أحمد محمد&background=667eea&color=fff&size=100" 
+                     alt="أحمد محمد" class="conversation-avatar">
+                <div class="flex-1">
+                    <div class="conversation-name">أحمد محمد</div>
+                    <div class="conversation-last-message">مرحباً! كيف حالك اليوم؟</div>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    <div class="conversation-time">منذ 5 دقائق</div>
+                    <div class="unread-badge">3</div>
+                </div>
+            </div>
+            
+            <div class="conversation-item">
+                <img src="https://ui-avatars.com/api/?name=سارة علي&background=f093fb&color=fff&size=100" 
+                     alt="سارة علي" class="conversation-avatar">
+                <div class="flex-1">
+                    <div class="conversation-name">سارة علي</div>
+                    <div class="conversation-last-message">شكراً لك على المساعدة</div>
+                </div>
+                <div class="conversation-time">منذ ساعة</div>
+            </div>
+            
+            <div class="conversation-item">
+                <img src="https://ui-avatars.com/api/?name=محمد حسن&background=4facfe&color=fff&size=100" 
+                     alt="محمد حسن" class="conversation-avatar">
+                <div class="flex-1">
+                    <div class="conversation-name">محمد حسن</div>
+                    <div class="conversation-last-message">📎 ملف مرفق</div>
+                </div>
+                <div class="conversation-time">أمس</div>
+            </div>
+        </div>
+        
+        <div class="chat-demo">
+            <div class="chat-header">
+                <h2 class="text-xl font-bold">المحادثة المحسنة</h2>
+                <p class="text-sm text-gray-400 mt-1">مع أحمد محمد</p>
+            </div>
+            
+            <div class="chat-messages">
+                <div class="flex justify-start">
+                    <div class="message-bubble received-message">
+                        <div class="message-text">مرحباً! كيف حالك اليوم؟</div>
+                        <div class="message-time">منذ 10 دقائق</div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <div class="message-bubble sent-message">
+                        <div class="message-text">بخير الحمد لله 😊</div>
+                        <div class="message-time">
+                            منذ 8 دقائق
+                            <i class="bi bi-check2-all status-icon read"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <div class="message-bubble sent-message">
+                        <div class="message-text">هذه رسالة طويلة نسبياً لاختبار كيف تبدو الفقاعة الجديدة مع النص الطويل. لاحظ كيف تتوسع الفقاعة تلقائياً مع الحفاظ على الشكل الجميل والظلال المحسنة.</div>
+                        <div class="message-time">
+                            منذ 5 دقائق
+                            <i class="bi bi-check2-all status-icon read"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-start">
+                    <div class="message-bubble received-message">
+                        <div class="message-text">رائع! التصميم الجديد يبدو مذهلاً 🎨✨</div>
+                        <div class="message-time">منذ 3 دقائق</div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <div class="message-bubble sent-message">
+                        <div class="message-text">شكراً! تم تطبيق جميع التحسينات المطلوبة 🚀</div>
+                        <div class="message-time">
+                            الآن
+                            <i class="bi bi-check status-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-area">
+                <div class="input-controls">
+                    <button class="media-btn" title="إرسال صورة">
+                        📷
+                    </button>
+                    <button class="media-btn" title="إرسال فيديو">
+                        🎥
+                    </button>
+                    <button class="media-btn" title="إرسال ملف">
+                        📎
+                    </button>
+                    <button class="media-btn" title="إضافة إيموجي">
+                        😊
+                    </button>
+                </div>
+                
+                <div class="input-row">
+                    <textarea class="chat-input" placeholder="اكتب رسالتك هنا..." rows="1"></textarea>
+                    <button class="send-btn" onclick="simulateSend(this)">
+                        <i class="bi bi-send-fill"></i>
+                        إرسال
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="fixed bottom-4 left-4 max-w-md p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl backdrop-blur-lg">
+        <h3 class="text-lg font-semibold mb-3 text-blue-300">🎨 التحسينات المطبقة:</h3>
+        <ul class="space-y-1 text-sm text-blue-200">
+            <li>• <strong>الشريط الجانبي:</strong> مسافات أكبر، تباين محسن، مؤشرات واضحة</li>
+            <li>• <strong>فقاعات الرسائل:</strong> border-radius ناعم، ظلال متدرجة، تباين أفضل</li>
+            <li>• <strong>شريط الإدخال:</strong> أيقونات واضحة، حقل محسن، أنيميشن للإرسال</li>
+            <li>• <strong>التفاعل:</strong> hover effects، انتقالات سلسة، ردود فعل بصرية</li>
+        </ul>
+    </div>
+    
+    <script>
+        function simulateSend(btn) {
+            btn.classList.add('sending');
+            btn.innerHTML = '<i class="bi bi-arrow-up-circle-fill"></i> جاري الإرسال...';
+            
+            setTimeout(() => {
+                btn.classList.remove('sending');
+                btn.innerHTML = '<i class="bi bi-send-fill"></i> إرسال';
+            }, 2000);
+        }
+        
+        document.querySelector('.chat-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+    </script>
+</body>
+</html> 

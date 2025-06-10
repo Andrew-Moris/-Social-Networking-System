@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار الاتصال بالـ API</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f0f2f5;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #0a66c2;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        button {
+            background: #0a66c2;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        button:hover {
+            background: #004182;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            direction: ltr;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>اختبار الاتصال بالـ API</h1>
+
+    <div class="card">
+        <h2>اختبار اتصال قاعدة البيانات</h2>
+        <button id="test-connection">اختبار الاتصال</button>
+        <div id="connection-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>اختبار تسجيل مستخدم جديد</h2>
+        <form id="test-register-form">
+            <div>
+                <label for="username">اسم المستخدم:</label>
+                <input type="text" id="username" value="testuser_<?php echo rand(1000, 9999); ?>" style="padding: 0.5rem; margin: 0.5rem 0; width: 300px;">
+            </div>
+            <div>
+                <label for="email">البريد الإلكتروني:</label>
+                <input type="email" id="email" value="test<?php echo rand(1000, 9999); ?>@example.com" style="padding: 0.5rem; margin: 0.5rem 0; width: 300px;">
+            </div>
+            <div>
+                <label for="password">كلمة المرور:</label>
+                <input type="text" id="password" value="password123" style="padding: 0.5rem; margin: 0.5rem 0; width: 300px;">
+            </div>
+            <button type="submit">تسجيل اختباري</button>
+        </form>
+        <div id="register-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>تفاصيل المشكلة</h2>
+        <p>وصف المشكلة: <span id="error-description" class="error">حدث خطأ في الاتصال بالخادم</span></p>
+        <p>تفاصيل إضافية:</p>
+        <ul>
+            <li>عنوان API: <code id="api-url">../api/auth.php</code></li>
+            <li>نوع الطلب: <code>POST</code></li>
+            <li>نوع المحتوى: <code>application/json</code></li>
+        </ul>
+    </div>
+
+    <script>
+        document.getElementById('test-connection').addEventListener('click', function() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = '<p>جاري الاختبار...</p>';
+            
+            fetch('../api/test_connection.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.innerHTML = `
+                            <p class="success">تم الاتصال بنجاح!</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <p class="error">فشل الاتصال!</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `
+                        <p class="error">خطأ في الطلب: ${error.message}</p>
+                        <p>تأكد من وجود ملف test_connection.php في مجلد api</p>
+                    `;
+                });
+        });
+
+        document.getElementById('test-register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('register-result');
+            resultDiv.innerHTML = '<p>جاري التسجيل...</p>';
+            
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const requestData = {
+                action: 'register',
+                username: username,
+                email: email,
+                password: password
+            };
+            
+            fetch('../api/auth.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    return response.text().then(text => {
+                        throw new Error(`استجابة غير صالحة: ${text}`);
+                    });
+                }
+            })
+            .then(data => {
+                resultDiv.innerHTML = `
+                    <p class="${data.error ? 'error' : 'success'}">${data.error ? 'فشل التسجيل' : 'تم التسجيل بنجاح!'}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `
+                    <p class="error">خطأ في الطلب: ${error.message}</p>
+                    <pre>قد تكون المشكلة في الاتصال بـ API أو تنسيق البيانات</pre>
+                `;
+            });
+        });
+
+        window.addEventListener('load', function() {
+            const apiUrl = document.getElementById('api-url').textContent;
+            fetch(apiUrl, {
+                method: 'OPTIONS'
+            })
+            .then(() => {
+                document.getElementById('error-description').textContent = 'الاتصال بالخادم متاح';
+                document.getElementById('error-description').className = 'success';
+            })
+            .catch(error => {
+                document.getElementById('error-description').textContent = `فشل الاتصال: ${error.message}`;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("🔧 تطبيق إصلاح التعليقات...");
+    
+    if (!document.querySelector('meta[name="user-id"]')) {
+        const meta = document.createElement("meta");
+        meta.name = "user-id";
+        meta.content = "11";
+        document.head.appendChild(meta);
+        console.log("✅ تم إضافة meta tag للمستخدم");
+    }
+    
+    if (typeof loadComments === "undefined") {
+        window.loadComments = async function(postId) {
+            console.log("🔄 تحميل التعليقات للمنشور:", postId);
+            const container = document.getElementById(`comments-container-${postId}`);
+            
+            if (!container) {
+                console.log("❌ حاوية التعليقات غير موجودة");
+                return;
+            }
+            
+            try {
+                const response = await fetch(`api/social.php?action=get_comments&post_id=${postId}`);
+                const result = await response.json();
+                
+                if (result.success && result.data.comments) {
+                    if (result.data.comments.length === 0) {
+                        container.innerHTML = '<div class="text-center py-4 text-gray-400">لا توجد تعليقات بعد</div>';
+                    } else {
+                        const currentUserId = parseInt(document.querySelector('meta[name="user-id"]').content);
+                        container.innerHTML = result.data.comments.map(comment => `
+                            <div class="comment-item" id="comment-${comment.id}">
+                                <div class="flex gap-3">
+                                    <img src="${comment.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(comment.username) + '&background=667eea&color=fff&size=80'}" 
+                                         alt="${comment.username}" class="w-10 h-10 rounded-full object-cover">
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold text-white">${comment.first_name} ${comment.last_name}</span>
+                                                <span class="text-gray-400 text-sm">@${comment.username}</span>
+                                                <span class="text-gray-500 text-xs">${formatDate ? formatDate(comment.created_at) : comment.created_at}</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-white mb-2">${comment.content}</p>
+                                        <div class="flex gap-2">
+                                            <button class="action-button text-xs">
+                                                <i class="bi bi-heart"></i>
+                                                <span>${comment.like_count || 0}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    container.innerHTML = '<div class="text-center py-4 text-gray-400">خطأ في تحميل التعليقات</div>';
+                }
+            } catch (error) {
+                console.error("❌ خطأ في تحميل التعليقات:", error);
+                container.innerHTML = '<div class="text-center py-4 text-gray-400">خطأ في الاتصال</div>';
+            }
+        };
+        console.log("✅ تم إصلاح دالة loadComments");
+    }
+    
+    if (typeof toggleComments === "undefined") {
+        window.toggleComments = async function(postId) {
+            console.log("🔄 تبديل عرض التعليقات للمنشور:", postId);
+            const commentsSection = document.getElementById(`comments-${postId}`);
+            
+            if (!commentsSection) {
+                console.log("❌ قسم التعليقات غير موجود");
+                return;
+            }
+            
+            if (commentsSection.style.display === "none" || commentsSection.style.display === "") {
+                commentsSection.style.display = "block";
+                await loadComments(postId);
+            } else {
+                commentsSection.style.display = "none";
+            }
+        };
+        console.log("✅ تم إصلاح دالة toggleComments");
+    }
+    
+    console.log("🎉 تم تطبيق جميع الإصلاحات بنجاح!");
+});
+</script>

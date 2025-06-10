@@ -1,0 +1,393 @@
+<section id="posts">
+   <h4 id="posts-header">منشورات</h4>
+   
+   <div id="create-post-form" class="create-post mb-4 d-none">
+      <form id="post-form" enctype="multipart/form-data">
+         <textarea id="post-content" placeholder="ماذا يدور في ذهنك؟" rows="3" class="form-control mb-3" required></textarea>
+         <div class="d-flex justify-content-between">
+            <div>
+               <label for="post-image" class="btn btn-outline-secondary">
+                  <i class="bi bi-image"></i> <span>إضافة صورة</span>
+               </label>
+               <input type="file" id="post-image" name="post_image" class="d-none" accept="image/*">
+               <span id="selected-file" class="me-2 text-muted"></span>
+            </div>
+            <button type="submit" class="btn post-btn">نشر</button>
+         </div>
+      </form>
+   </div>
+   
+   <div id="posts-container" class="mt-3">
+      <div class="text-center py-4 loading">
+         <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">جاري التحميل...</span>
+         </div>
+      </div>
+   </div>
+   
+   <div id="load-more-container" class="text-center mt-3 d-none">
+      <button id="load-more-btn" class="btn btn-outline-light">تحميل المزيد</button>
+   </div>
+</section>
+
+<script>
+let currentPage = 1;
+let hasMorePosts = true;
+let isLoadingPosts = false;
+let currentProfileUsername = '';
+
+function fetchPosts(userId, page = 1) {
+   if (isLoadingPosts || !hasMorePosts) return;
+   
+   isLoadingPosts = true;
+   
+   if (page === 1) {
+      document.querySelector('#posts-container').innerHTML = `
+         <div class="text-center py-4 loading">
+            <div class="spinner-border text-primary" role="status">
+               <span class="visually-hidden">جاري التحميل...</span>
+            </div>
+         </div>
+      `;
+   } else {
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'text-center py-3 loading-more';
+      loadingIndicator.innerHTML = `
+         <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <span class="visually-hidden">جاري التحميل...</span>
+         </div>
+      `;
+      document.querySelector('#posts-container').appendChild(loadingIndicator);
+   }
+   
+   fetch(`/WEP/api/posts.php?user_id=${userId}&page=${page}&limit=5`)
+      .then(response => response.json())
+      .then(data => {
+         if (page === 1) {
+            document.querySelector('#posts-container').innerHTML = '';
+         } else {
+            const loadingMore = document.querySelector('.loading-more');
+            if (loadingMore) loadingMore.remove();
+         }
+         
+         if (data.status === 'success') {
+            if (currentProfileUsername) {
+               document.getElementById('posts-header').textContent = `منشورات ${currentProfileUsername}`;
+            }
+            
+            if (data.posts && data.posts.length > 0) {
+               data.posts.forEach(post => {
+                  const postElement = createPostElement(post);
+                  document.querySelector('#posts-container').appendChild(postElement);
+               });
+               
+               hasMorePosts = data.has_more;
+               
+               const loadMoreContainer = document.getElementById('load-more-container');
+               if (hasMorePosts) {
+                  loadMoreContainer.classList.remove('d-none');
+               } else {
+                  loadMoreContainer.classList.add('d-none');
+               }
+            } else if (page === 1) {
+               document.querySelector('#posts-container').innerHTML = `
+                  <div class="post">
+                     <p class="text-center text-muted">لا توجد منشورات حتى الآن.</p>
+                  </div>
+               `;
+            }
+         } else {
+            document.querySelector('#posts-container').innerHTML = ``;
+         }
+         
+         isLoadingPosts = false;
+      })
+      .catch(error => {
+         console.error('Error fetching posts:', error);
+         
+         if (page === 1) {
+            document.querySelector('#posts-container').innerHTML = ``;
+         } else {
+            const loadingMore = document.querySelector('.loading-more');
+            if (loadingMore) loadingMore.remove();
+         }
+         
+         isLoadingPosts = false;
+      });
+}
+
+function createPostElement(post) {
+   const postElement = document.createElement('div');
+   postElement.className = 'post mb-4';
+   postElement.dataset.postId = post.id;
+   
+   const postDate = new Date(post.created_at);
+   const formattedDate = postDate.toLocaleDateString('ar-EG') + ' ' + postDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+   
+   postElement.innerHTML = `
+      <div class="post-header">
+         ${post.avatar_url ? `<img src="${post.avatar_url}" alt="صورة المستخدم" class="post-avatar">` : `<div class="post-avatar-placeholder"></div>`}
+         <div class="post-header-info">
+            <h3><a href="/WEP/u.php?username=${post.username}" class="post-author">${post.username}</a></h3>
+            <span class="post-date">${formattedDate}</span>
+         </div>
+      </div>
+      <div class="post-content">
+         ${post.content.replace(/\n/g, '<br>')}
+      </div>
+      ${post.image_url ? `<img src="${post.image_url}" alt="صورة المنشور" class="post-image">` : ''}
+      <div class="post-footer">
+         <div class="post-action like-action" data-post-id="${post.id}" data-liked="${post.is_liked ? 'true' : 'false'}">
+            <i class="bi ${post.is_liked ? 'bi-heart-fill text-danger' : 'bi-heart'}"></i> 
+            <span class="like-count">${post.likes_count || 0}</span> إعجاب
+         </div>
+         <div class="post-action comment-action" data-post-id="${post.id}">
+            <i class="bi bi-chat"></i> 
+            <span class="comments-count">${post.comments_count || 0}</span> تعليق
+         </div>
+         <div class="post-action share-action" data-post-id="${post.id}">
+            <i class="bi bi-share"></i> مشاركة
+         </div>
+      </div>
+      <div class="comments-section d-none" data-post-id="${post.id}">
+         <div class="comments-container mb-2"></div>
+         <form class="comment-form d-flex gap-2">
+            <input type="text" class="form-control comment-input" placeholder="اكتب تعليقًا...">
+            <button type="submit" class="btn btn-sm btn-primary">تعليق</button>
+         </form>
+      </div>
+   `;
+   
+   const likeAction = postElement.querySelector('.like-action');
+   likeAction.addEventListener('click', function() {
+      const postId = this.dataset.postId;
+      const isLiked = this.dataset.liked === 'true';
+      const likeIcon = this.querySelector('i');
+      const likeCount = this.querySelector('.like-count');
+      
+      fetch('/WEP/api/likes.php', {
+         method: 'POST',
+         headers: {
+            'Content-Type': 'application/json'
+         },
+         body: JSON.stringify({
+            post_id: postId,
+            action: isLiked ? 'unlike' : 'like'
+         })
+      })
+      .then(response => response.json())
+      .then(data => {
+         if (data.status === 'success') {
+            this.dataset.liked = isLiked ? 'false' : 'true';
+            
+            if (isLiked) {
+               likeIcon.classList.remove('bi-heart-fill', 'text-danger');
+               likeIcon.classList.add('bi-heart');
+               likeCount.textContent = parseInt(likeCount.textContent) - 1;
+            } else {
+               likeIcon.classList.remove('bi-heart');
+               likeIcon.classList.add('bi-heart-fill', 'text-danger');
+               likeCount.textContent = parseInt(likeCount.textContent) + 1;
+            }
+         }
+      })
+      .catch(error => console.error('Error updating like status:', error));
+   });
+   
+   const commentAction = postElement.querySelector('.comment-action');
+   commentAction.addEventListener('click', function() {
+      const postId = this.dataset.postId;
+      const commentsSection = postElement.querySelector(`.comments-section[data-post-id="${postId}"]`);
+      
+      if (commentsSection.classList.contains('d-none')) {
+         commentsSection.classList.remove('d-none');
+         fetchComments(postId, commentsSection.querySelector('.comments-container'));
+      } else {
+         commentsSection.classList.add('d-none');
+      }
+   });
+   
+   const commentForm = postElement.querySelector('.comment-form');
+   commentForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const postId = postElement.dataset.postId;
+      const commentInput = this.querySelector('.comment-input');
+      const commentText = commentInput.value.trim();
+      
+      if (commentText) {
+         fetch('/WEP/api/comments.php', {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+               post_id: postId,
+               content: commentText
+            })
+         })
+         .then(response => response.json())
+         .then(data => {
+            if (data.status === 'success') {
+               const commentsContainer = postElement.querySelector('.comments-container');
+               const newComment = createCommentElement(data.comment);
+               commentsContainer.appendChild(newComment);
+               
+               commentInput.value = '';
+               
+               const commentsCount = postElement.querySelector('.comments-count');
+               commentsCount.textContent = parseInt(commentsCount.textContent) + 1;
+            }
+         })
+         .catch(error => console.error('Error adding comment:', error));
+      }
+   });
+   
+   return postElement;
+}
+
+function fetchComments(postId, container) {
+   container.innerHTML = `
+      <div class="text-center py-2">
+         <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <span class="visually-hidden">جاري تحميل التعليقات...</span>
+         </div>
+      </div>
+   `;
+   
+   fetch(`/WEP/api/comments.php?post_id=${postId}`)
+      .then(response => response.json())
+      .then(data => {
+         container.innerHTML = '';
+         
+         if (data.status === 'success') {
+            if (data.comments && data.comments.length > 0) {
+               data.comments.forEach(comment => {
+                  const commentElement = createCommentElement(comment);
+                  container.appendChild(commentElement);
+               });
+            } else {
+               container.innerHTML = '<p class="text-muted small">لا توجد تعليقات حتى الآن.</p>';
+            }
+         } else {
+            container.innerHTML = ``;
+         }
+      })
+      .catch(error => {
+         console.error('Error fetching comments:', error);
+         container.innerHTML = ``;
+      });
+}
+
+function createCommentElement(comment) {
+   const commentElement = document.createElement('div');
+   commentElement.className = 'comment d-flex gap-2 mb-2';
+   
+   const commentDate = new Date(comment.created_at);
+   const formattedDate = commentDate.toLocaleDateString('ar-EG') + ' ' + commentDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+   
+   commentElement.innerHTML = `
+      ${comment.avatar_url ? `<img src="${comment.avatar_url}" alt="صورة المستخدم" class="comment-avatar">` : `<div class="comment-avatar-placeholder"></div>`}
+      <div class="comment-content">
+         <div class="d-flex justify-content-between">
+            <a href="/WEP/u.php?username=${comment.username}" class="comment-author">${comment.username}</a>
+            <small class="text-muted">${formattedDate}</small>
+         </div>
+         <p class="mb-0">${comment.content}</p>
+      </div>
+   `;
+   
+   return commentElement;
+}
+
+function initCreatePostForm() {
+   const currentUserId = sessionStorage.getItem('current_user_id');
+   const profileId = window.currentProfileId || currentUserId;
+   
+   if (currentUserId && profileId == currentUserId) {
+      document.getElementById('create-post-form').classList.remove('d-none');
+      
+      document.getElementById('post-image').addEventListener('change', function() {
+         const fileName = this.files[0]?.name;
+         document.getElementById('selected-file').textContent = fileName ? (fileName.length > 15 ? fileName.substring(0, 15) + '...' : fileName) : '';
+      });
+      
+      document.getElementById('post-form').addEventListener('submit', function(e) {
+         e.preventDefault();
+         
+         const content = document.getElementById('post-content').value.trim();
+         const imageFile = document.getElementById('post-image').files[0];
+         
+         if (!content) return;
+         
+         const formData = new FormData();
+         formData.append('content', content);
+         if (imageFile) {
+            formData.append('image', imageFile);
+         }
+         
+         const submitButton = this.querySelector('button[type="submit"]');
+         const originalText = submitButton.textContent;
+         submitButton.disabled = true;
+         submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> جاري النشر...';
+         
+         fetch('/WEP/api/posts.php', {
+            method: 'POST',
+            body: formData
+         })
+         .then(response => response.json())
+         .then(data => {
+            if (data.status === 'success') {
+               this.reset();
+               document.getElementById('selected-file').textContent = '';
+               
+               currentPage = 1;
+               hasMorePosts = true;
+               fetchPosts(profileId, 1);
+            } else {
+               alert(data.message || 'حدث خطأ أثناء نشر المنشور. يرجى المحاولة مرة أخرى.');
+            }
+            
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
+         })
+         .catch(error => {
+            console.error('Error creating post:', error);
+            alert('حدث خطأ أثناء نشر المنشور. يرجى المحاولة مرة أخرى.');
+            
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
+         });
+      });
+   }
+}
+
+document.getElementById('load-more-btn').addEventListener('click', function() {
+   const userId = window.currentProfileId || sessionStorage.getItem('current_user_id');
+   if (userId && hasMorePosts && !isLoadingPosts) {
+      currentPage++;
+      fetchPosts(userId, currentPage);
+   }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+   const userId = window.currentProfileId || sessionStorage.getItem('current_user_id');
+   
+   fetch(`/WEP/api/users.php?id=${userId}`)
+      .then(response => response.json())
+      .then(data => {
+         if (data.status === 'success') {
+            currentProfileUsername = data.user.username;
+            document.getElementById('posts-header').textContent = `منشورات ${currentProfileUsername}`;
+         }
+      })
+      .catch(error => console.error('Error fetching user data:', error));
+   
+   if (userId) {
+      currentPage = 1;
+      hasMorePosts = true;
+      fetchPosts(userId, currentPage);
+      initCreatePostForm();
+   }
+});
+</script>
