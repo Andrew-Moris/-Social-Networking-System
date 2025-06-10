@@ -1,0 +1,50 @@
+# Enable file uploads and set limits
+php_value upload_max_filesize 10M
+php_value post_max_size 12M
+php_value max_file_uploads 20
+php_value file_uploads On
+php_value memory_limit 128M
+php_value max_execution_time 300
+
+# Enable URL rewriting
+RewriteEngine On
+RewriteBase /WEP/
+
+# Security settings
+Options -Indexes
+DirectoryIndex index.php index.html
+
+# Handle profile URLs
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^@([^/]+)/?$ u.php?username=$1 [L,QSA]
+
+# Handle direct profile access
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^u/?$ u.php [L,QSA]
+
+# Ensure proper routing for PHP files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^/]+)\.php$ $1.php [L,QSA]
+
+# Protect sensitive files
+<Files "config.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.log">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Allow common file types for uploads
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|mp4|avi|mov|wmv)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# Prevent execution of PHP files in upload directories
+# Note: Directory directive moved to Apache config or use separate .htaccess in uploads folder 
